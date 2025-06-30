@@ -1,0 +1,20 @@
+# requirements.txt - biblioteki potrzebne do uruchomienia aplikacji
+
+# GUI i interfejs
+pillow
+
+# OCR i analiza obrazu
+opencv-python
+pytesseract
+
+# Praca z danymi
+pandas
+
+# API (Shoper)
+requests
+
+# (opcjonalne) styl Azure do tkintera
+azure-ttk-theme @ git+https://github.com/rdbende/ttk-widget-factory.git
+
+# (opcjonalnie) klasyfikacja obrazu
+scikit-learn
