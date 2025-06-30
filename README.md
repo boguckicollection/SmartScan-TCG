@@ -10,8 +10,7 @@ Install dependencies from `requirements.txt` and launch the main menu:
 
 ```bash
 pip install -r requirements.txt
-python gui_main_menu.py
+python main.py
 ```
 
 The main menu lets you choose between scanning cards, viewing your collection, or analyzing Shoper sales.
-
