@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import pytesseract
 from PIL import Image
