@@ -3,8 +3,10 @@
 from pathlib import Path
 import re
 
-from .ocr_engine import extract_text
-from .data_exporter import export_to_csv
+# Use absolute imports so the script can be executed directly
+# or via ``python -m`` without package issues.
+from scanner.ocr_engine import extract_text
+from scanner.data_exporter import export_to_csv
 
 RARITY_KEYWORDS = [
     "Common",

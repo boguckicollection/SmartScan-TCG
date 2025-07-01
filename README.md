@@ -18,11 +18,18 @@ The main menu lets you choose between scanning cards, viewing your collection, o
 ## Scanning cards from images
 
 Scans of cards placed in `assets/scans` can be processed in batch using
-`scanner/card_scanner.py`. The script performs OCR on each image and stores the
-results in `data/cards_scanned.csv`:
+`scanner/card_scanner.py`. Execute the script from the repository root so that
+the ``scanner`` package is discoverable. The script performs OCR on each image
+and stores the results in `data/cards_scanned.csv`:
 
 ```bash
 python scanner/card_scanner.py
+```
+
+Alternatively you can launch it as a module:
+
+```bash
+python -m scanner.card_scanner
 ```
 
 Ensure the `tesseract` binary is installed and available in your `PATH` for OCR
