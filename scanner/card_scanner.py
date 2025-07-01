@@ -78,9 +78,20 @@ def extract_card_name(lines: list[str]) -> str:
 
 
 def clean_number(text: str) -> str:
-    """Extract card number in the form ``X/Y`` from OCR text."""
-    match = re.search(r"\d{1,3}/\d{1,3}", text or "")
-    return match.group(0) if match else "Unknown"
+    """Extract card number from OCR text.
+
+    Supports standard ``X/Y`` format as well as promo identifiers like
+    ``SVP EN 126``.
+    """
+    if not text:
+        return "Unknown"
+    match = re.search(r"\d{1,3}/\d{1,3}", text)
+    if match:
+        return match.group(0)
+    promo = PROMO_REGEX.search(text)
+    if promo:
+        return promo.group(1).strip()
+    return "Unknown"
 
 
 def enhance_for_ocr(image: Image.Image) -> Image.Image:
@@ -104,6 +115,16 @@ def safe_crop(image: Image.Image, bbox: tuple[int, int, int, int]):
 
 
 API_URL = "https://api.tcgdex.net/v2/cards"
+API_CARD_URL = "https://api.tcgdex.net/v2/en/cards"
+
+PROMO_REGEX = re.compile(r"\b([A-Z]{2,4}\s?EN?\s?\d{1,4})\b")
+PROMO_SETS = {
+    "SVP": "svpromos",
+    "SWSH": "swshpromos",
+    "SM": "smpromos",
+    "BW": "bwpromos",
+    "XY": "xypromos",
+}
 
 
 def query_tcg_api(name: str | None, number: str | None, set_name: str | None = None) -> dict | None:
@@ -153,6 +174,25 @@ def query_tcg_api(name: str | None, number: str | None, set_name: str | None = N
     }
 
 
+def query_card_by_id(card_id: str) -> dict | None:
+    """Query the TCGdex API for a card given its identifier."""
+    try:
+        resp = requests.get(f"{API_CARD_URL}/{card_id}", timeout=5)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        return None
+
+    if not isinstance(data, dict):
+        return None
+
+    return {
+        "Name": data.get("name"),
+        "Number": data.get("number"),
+        "Set": data.get("set", {}).get("id") if isinstance(data.get("set"), dict) else data.get("set"),
+    }
+
+
 
 
 def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
@@ -163,12 +203,21 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
         name = extract_card_name(lines)
 
     number = ""
+    promo_match = None
     if number_text:
         number = clean_number(number_text)
+        promo_match = PROMO_REGEX.search(number_text)
 
     result = {"Name": name, "Number": number, "Set": "Unknown"}
 
-    api_data = query_tcg_api(name, number)
+    if promo_match:
+        card_id = promo_match.group(1).lower().replace(" ", "-")
+        result["Number"] = promo_match.group(1)
+        result["Set"] = PROMO_SETS.get(promo_match.group(1).split()[0], "Unknown")
+        api_data = query_card_by_id(card_id)
+    else:
+        api_data = query_tcg_api(name, number)
+
     if api_data:
         result.update({k: v for k, v in api_data.items() if v})
 

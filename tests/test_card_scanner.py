@@ -145,3 +145,28 @@ def test_scan_image_api_override(tmp_path, monkeypatch):
     assert data["Name"] == "Exact Name"
     assert data["Number"] == "1/102"
     assert data["Set"] == "Base"
+
+
+def test_scan_image_promo_number(tmp_path, monkeypatch):
+    img_path = tmp_path / "promo.jpg"
+    create_dummy_image(img_path, size=(100, 100))
+    monkeypatch.setattr(card_scanner.Image, "open", lambda p: card_scanner.Image.Image(size=(100, 100)))
+
+    monkeypatch.setattr(card_scanner, "extract_text", lambda *a, **kw: "Name\nSVP EN 126")
+    monkeypatch.setattr(card_scanner, "enhance_for_ocr", lambda img: img)
+
+    captured = {}
+
+    def fake_query_card(card_id):
+        captured["id"] = card_id
+        return {"Name": "Promo", "Number": "SVP EN 126", "Set": "svpromos"}
+
+    monkeypatch.setattr(card_scanner, "query_card_by_id", fake_query_card)
+    monkeypatch.setattr(card_scanner, "query_tcg_api", lambda *a, **kw: None)
+
+    data = card_scanner.scan_image(img_path)
+
+    assert captured.get("id") == "svp-en-126"
+    assert data["Name"] == "Promo"
+    assert data["Number"] == "SVP EN 126"
+    assert data["Set"] == "svpromos"
