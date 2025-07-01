@@ -11,6 +11,7 @@ if __name__ == "__main__" and __package__ is None:
 # Use absolute imports so the script can be executed directly
 # or via ``python -m`` without package issues.
 from scanner.ocr_engine import extract_text
+from PIL import Image
 from scanner.data_exporter import export_to_csv
 
 RARITY_KEYWORDS = [
@@ -23,10 +24,12 @@ RARITY_KEYWORDS = [
 ]
 
 
-def parse_card_text(text: str) -> dict:
+def parse_card_text(text: str, name_override: str | None = None) -> dict:
     """Parse OCR text and return card attributes."""
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     name = lines[0] if lines else "Unknown"
+    if name_override:
+        name = name_override
 
     number_match = re.search(r"(\d+/\d+)", text)
     number = number_match.group(1) if number_match else ""
@@ -45,8 +48,19 @@ def parse_card_text(text: str) -> dict:
 
 def scan_image(path: Path) -> dict:
     """Scan a single image and return parsed data."""
-    text = extract_text(str(path))
-    return parse_card_text(text)
+    image = Image.open(path)
+    width, height = image.size
+
+    # Name is typically in the upper part of the card
+    name_bbox = (0, 0, width // 2, int(height * 0.15))
+    name_text = extract_text(str(path), bbox=name_bbox)
+    name_line = name_text.splitlines()[0].strip() if name_text.splitlines() else "Unknown"
+
+    # Set info and number usually reside near the bottom right
+    info_bbox = (width // 2, int(height * 0.8), width, height)
+    info_text = extract_text(str(path), bbox=info_bbox)
+
+    return parse_card_text(info_text, name_override=name_line)
 
 
 def scan_directory(dir_path: Path) -> list:
@@ -55,6 +69,14 @@ def scan_directory(dir_path: Path) -> list:
     for img_path in sorted(Path(dir_path).glob("*.jpg")):
         results.append(scan_image(img_path))
     for img_path in sorted(Path(dir_path).glob("*.png")):
+        results.append(scan_image(img_path))
+    return results
+
+
+def scan_files(files: list[Path]) -> list:
+    """Scan a list of image paths."""
+    results = []
+    for img_path in files:
         results.append(scan_image(img_path))
     return results
 

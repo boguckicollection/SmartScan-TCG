@@ -15,14 +15,18 @@ pip install -r requirements.txt
 python main.py
 ```
 
-The main menu lets you choose between scanning cards, viewing your collection, or analyzing Shoper sales.
+The main menu lets you choose between scanning cards, viewing your collection, or analyzing Shoper sales.  
+Selecting **Skanowanie kart** opens a dialog where you can choose image files from disk. The scanned data
+is saved to `data/cards_scanned.csv`.
 
 ## Scanning cards from images
 
 Scans of cards placed in `assets/scans` can be processed in batch using
 `scanner/card_scanner.py`. Execute the script from the repository root so that
 the ``scanner`` package is discoverable. The script performs OCR on each image
-and stores the results in `data/cards_scanned.csv`:
+and stores the results in `data/cards_scanned.csv`. It automatically crops
+regions with the card name and set information before running OCR to improve
+accuracy:
 
 ```bash
 python scanner/card_scanner.py
