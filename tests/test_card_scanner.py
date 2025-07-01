@@ -73,7 +73,7 @@ def test_scan_image_regions(tmp_path, monkeypatch):
 
     calls = []
 
-    def fake_extract_text(image):
+    def fake_extract_text(image, config=None):
         calls.append(image.size)
         if image.size == (160, 66):
             return "Name"
@@ -96,7 +96,7 @@ def test_scan_image_precropped(tmp_path, monkeypatch):
     monkeypatch.setattr(card_scanner.Image, "open", lambda p: card_scanner.Image.Image(size=(100, 100)))
     calls = []
 
-    def fake_extract_text(image):
+    def fake_extract_text(image, config=None):
         calls.append(image.size)
         return "Name\n1/102"
 
