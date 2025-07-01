@@ -32,5 +32,12 @@ Alternatively you can launch it as a module:
 python -m scanner.card_scanner
 ```
 
+You can also execute the script from within the ``scanner`` directory:
+
+```bash
+cd scanner
+python card_scanner.py
+```
+
 Ensure the `tesseract` binary is installed and available in your `PATH` for OCR
 to work correctly.
