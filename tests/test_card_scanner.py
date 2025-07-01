@@ -55,6 +55,7 @@ class DummyDataFrame:
 sys.modules.setdefault("pandas", types.SimpleNamespace(DataFrame=DummyDataFrame))
 
 sys.modules.setdefault("unidecode", types.SimpleNamespace(unidecode=lambda s: s))
+sys.modules.setdefault("requests", types.SimpleNamespace(get=lambda *a, **k: None))
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -81,6 +82,7 @@ def test_scan_image_regions(tmp_path, monkeypatch):
 
     monkeypatch.setattr(card_scanner, "extract_text", fake_extract_text)
     monkeypatch.setattr(card_scanner, "enhance_for_ocr", lambda img: img)
+    monkeypatch.setattr(card_scanner, "query_tcg_api", lambda *args, **kwargs: None)
 
     data = card_scanner.scan_image(img_path)
 
@@ -102,6 +104,7 @@ def test_scan_image_precropped(tmp_path, monkeypatch):
 
     monkeypatch.setattr(card_scanner, "extract_text", fake_extract_text)
     monkeypatch.setattr(card_scanner, "enhance_for_ocr", lambda img: img)
+    monkeypatch.setattr(card_scanner, "query_tcg_api", lambda *args, **kwargs: None)
 
     data = card_scanner.scan_image(img_path)
 
@@ -122,3 +125,23 @@ def test_export_to_csv(tmp_path):
     content = out_file.read_text()
     assert "Name" in content
     assert "Test" in content
+
+
+def test_scan_image_api_override(tmp_path, monkeypatch):
+    img_path = tmp_path / "api.jpg"
+    create_dummy_image(img_path, size=(100, 100))
+    monkeypatch.setattr(card_scanner.Image, "open", lambda p: card_scanner.Image.Image(size=(100, 100)))
+
+    monkeypatch.setattr(card_scanner, "extract_text", lambda *args, **kw: "Name\n1/102")
+    monkeypatch.setattr(card_scanner, "enhance_for_ocr", lambda img: img)
+
+    def fake_api(name, number, set_name=None):
+        return {"Name": "Exact Name", "Number": "1/102", "Set": "Base"}
+
+    monkeypatch.setattr(card_scanner, "query_tcg_api", fake_api)
+
+    data = card_scanner.scan_image(img_path)
+
+    assert data["Name"] == "Exact Name"
+    assert data["Number"] == "1/102"
+    assert data["Set"] == "Base"
