@@ -16,15 +16,14 @@ if __name__ == "__main__" and __package__ is None:
 from scanner.ocr_engine import extract_text
 from PIL import Image
 from scanner.data_exporter import export_to_csv
+from unidecode import unidecode
 
-RARITY_KEYWORDS = [
-    "Common",
-    "Uncommon",
-    "Rare",
-    "Ultra Rare",
-    "Secret Rare",
-    "Promo",
-]
+
+def clean_name(name: str) -> str:
+    """Return a simplified card name for consistent comparison."""
+    name = unidecode(name)
+    name = re.sub(r"[^a-zA-Z0-9 .]", "", name)
+    return name.strip()
 
 
 def _extract_text_compat(path: str, bbox: tuple | None) -> str:
@@ -50,29 +49,15 @@ def _extract_text_compat(path: str, bbox: tuple | None) -> str:
 
 
 def parse_card_text(name_text: str, number_text: str) -> dict:
-    """Parse card name and additional info from OCR text fragments."""
-    # Name comes from the upper crop of the card image
+    """Parse card name and number from OCR text fragments."""
     name_lines = [line.strip() for line in name_text.splitlines() if line.strip()]
-    name = name_lines[0] if name_lines else "Unknown"
+    name_raw = name_lines[0] if name_lines else "Unknown"
+    name = clean_name(name_raw)
 
-    # Number, set and rarity usually appear near the bottom of the card
-    combined = "\n".join(
-        line.strip() for line in number_text.splitlines() if line.strip()
-    )
+    number_match = re.search(r"\d+/\d+", number_text)
+    number = number_match.group(0) if number_match else ""
 
-    number_match = re.search(r"(\d+/\d+)", combined)
-    number = number_match.group(1) if number_match else ""
-
-    rarity = ""
-    for r in RARITY_KEYWORDS:
-        if re.search(r, combined, re.IGNORECASE):
-            rarity = r
-            break
-
-    set_match = re.search(r"Set[:\s]*(.+)", combined, re.IGNORECASE)
-    set_name = set_match.group(1).strip() if set_match else ""
-
-    return {"Name": name, "Set": set_name, "Rarity": rarity, "Number": number}
+    return {"Name": name if name else "Unknown", "Number": number}
 
 
 def scan_image(path: Path) -> dict:
@@ -80,21 +65,21 @@ def scan_image(path: Path) -> dict:
     image = Image.open(path)
     width, height = image.size
 
-    # Name: top 10% of the card, cropped with horizontal margins
+    # Name - cropped region above the artwork
     name_bbox = (
-        int(width * 0.1),
-        0,
-        int(width * 0.9),
-        int(height * 0.1),
+        int(width * 0.05),
+        int(height * 0.085),
+        int(width * 0.55),
+        int(height * 0.16),
     )
     name_text = _extract_text_compat(str(path), name_bbox)
 
-    # Number and other info: bottom 15% of the card, near the right edge
+    # Number - lower left corner region
     number_bbox = (
-        int(width * 0.6),
-        int(height * 0.85),
-        int(width * 0.95),
-        height,
+        int(width * 0.05),
+        int(height * 0.92),
+        int(width * 0.40),
+        int(height * 0.985),
     )
     number_text = _extract_text_compat(str(path), number_bbox)
 

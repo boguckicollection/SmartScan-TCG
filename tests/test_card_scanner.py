@@ -1,7 +1,60 @@
 from pathlib import Path
 
-from PIL import Image
+import types
+import sys
 import pytest
+
+
+class StubImage:
+    def __init__(self, size=(100, 100)):
+        self.size = size
+
+    @classmethod
+    def new(cls, mode, size, color=None):
+        return cls(size)
+
+    @classmethod
+    def open(cls, path):
+        return cls()
+
+    def crop(self, bbox):
+        w = max(0, bbox[2] - bbox[0])
+        h = max(0, bbox[3] - bbox[1])
+        return StubImage((w, h))
+
+    def save(self, path):
+        with open(path, "wb") as f:
+            f.write(b"")
+
+
+sys.modules.setdefault("PIL", types.SimpleNamespace(Image=StubImage))
+Image = StubImage
+sys.modules.setdefault(
+    "pytesseract",
+    types.SimpleNamespace(
+        pytesseract=types.SimpleNamespace(
+            TesseractNotFoundError=RuntimeError,
+            tesseract_cmd="",
+        ),
+        image_to_string=lambda *args, **kwargs: "",
+    ),
+)
+
+
+class DummyDataFrame:
+    def __init__(self, data):
+        pass
+
+    def to_csv(self, path, index=False):
+        with open(path, "w") as f:
+            f.write("")
+
+
+sys.modules.setdefault("pandas", types.SimpleNamespace(DataFrame=DummyDataFrame))
+
+sys.modules.setdefault("unidecode", types.SimpleNamespace(unidecode=lambda s: s))
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import scanner.card_scanner as card_scanner
 
@@ -27,11 +80,13 @@ def test_scan_image_fallback(tmp_path, monkeypatch):
     data = card_scanner.scan_image(img_path)
 
     assert data["Name"] == "Name"
-    assert data["Set"] == "Base"
     assert data["Number"] == "1/102"
-    # First call uses bbox and fails, second call should not pass bbox
-    assert len(calls) == 2
+    # Each OCR region triggers a fallback, so four calls total
+    assert len(calls) == 4
     assert calls[1][1] is None
-    # Should use a temporary path for the second call
+    assert calls[3][1] is None
+    # Temporary files should be used for fallback calls
     assert Path(calls[1][0]) != img_path
     assert not Path(calls[1][0]).exists()
+    assert Path(calls[3][0]) != img_path
+    assert not Path(calls[3][0]).exists()
