@@ -1,5 +1,7 @@
 """Batch scanner for extracting data from card images."""
 
+from __future__ import annotations
+
 from pathlib import Path
 from collections import defaultdict
 import os
@@ -19,11 +21,61 @@ from scanner.data_exporter import export_to_csv
 from unidecode import unidecode
 
 
+FORBIDDEN_WORDS = [
+    "trainer",
+    "supporter",
+    "basic",
+    "evolves from",
+    "stage1",
+    "stage2",
+    "stage3",
+]
+
+SUFFIXES = ["V", "EX", "VMAX", "VSTAR", "GX"]
+
+
 def clean_name(name: str) -> str:
     """Return a simplified card name for consistent comparison."""
     name = unidecode(name)
     name = re.sub(r"[^a-zA-Z0-9 .]", "", name)
     return name.strip()
+
+
+def is_valid_name_line(line: str) -> bool:
+    """Check if an OCR line is likely a card name."""
+    l = line.lower()
+    if any(w in l for w in FORBIDDEN_WORDS):
+        return False
+    return len(line.strip()) >= 3
+
+
+def extract_card_name(lines: list[str]) -> str:
+    """Return the first valid card name from OCR lines."""
+    for line in lines:
+        if not is_valid_name_line(line):
+            continue
+        return clean_name(line)
+    return "Unknown"
+
+
+def enhance_for_ocr(image: Image.Image) -> Image.Image:
+    """Improve contrast to help OCR."""
+    from PIL import ImageEnhance
+
+    gray = image.convert("L")
+    enhancer = ImageEnhance.Contrast(gray)
+    return enhancer.enhance(2.0)
+
+
+def safe_crop(image: Image.Image, bbox: tuple[int, int, int, int]):
+    """Crop ``image`` safely, returning ``None`` for invalid boxes."""
+    left, top, right, bottom = bbox
+    if right <= left or bottom <= top:
+        return None
+    width, height = image.size
+    if left < 0 or top < 0 or right > width or bottom > height:
+        return None
+    return image.crop(bbox)
 
 
 def _extract_text_compat(path: str, bbox: tuple | None) -> str:
@@ -48,16 +100,19 @@ def _extract_text_compat(path: str, bbox: tuple | None) -> str:
             os.remove(tmp_path)
 
 
-def parse_card_text(name_text: str, number_text: str) -> dict:
+def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
     """Parse card name and number from OCR text fragments."""
-    name_lines = [line.strip() for line in name_text.splitlines() if line.strip()]
-    name_raw = name_lines[0] if name_lines else "Unknown"
-    name = clean_name(name_raw)
+    name = "Unknown"
+    if name_text:
+        lines = [line.strip() for line in name_text.splitlines() if line.strip()]
+        name = extract_card_name(lines)
 
-    number_match = re.search(r"\d+/\d+", number_text)
-    number = number_match.group(0) if number_match else ""
+    number = ""
+    if number_text:
+        match = re.search(r"\d+/\d+", number_text)
+        number = match.group(0) if match else ""
 
-    return {"Name": name if name else "Unknown", "Number": number}
+    return {"Name": name, "Number": number}
 
 
 def scan_image(path: Path) -> dict:
@@ -65,16 +120,16 @@ def scan_image(path: Path) -> dict:
     image = Image.open(path)
     width, height = image.size
 
-    # Name - cropped region above the artwork
+    # Name region - top portion of the card
     name_bbox = (
-        int(width * 0.05),
-        int(height * 0.085),
-        int(width * 0.55),
-        int(height * 0.16),
+        0,
+        0,
+        int(width * 0.8),
+        int(height * 0.22),
     )
     name_text = _extract_text_compat(str(path), name_bbox)
 
-    # Number - lower left corner region
+    # Number region - lower left corner
     number_bbox = (
         int(width * 0.05),
         int(height * 0.92),
