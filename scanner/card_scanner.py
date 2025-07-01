@@ -126,6 +126,22 @@ PROMO_SETS = {
     "XY": "xypromos",
 }
 
+# Regex pattern for extracting set name from OCR text, e.g. "Set: Base".
+SET_REGEX = re.compile(r"set[:\s]+([A-Za-z0-9 '\-]+)", re.IGNORECASE)
+
+
+def parse_set(text: str) -> str | None:
+    """Return the set name found in OCR ``text`` if any."""
+    match = SET_REGEX.search(text)
+    if not match:
+        return None
+
+    raw = match.group(1).strip()
+    from scanner.set_mapping import SET_MAP
+
+    # Normalize using mapping when available.
+    return SET_MAP.get(raw.upper(), raw)
+
 
 def query_tcg_api(name: str | None, number: str | None, set_name: str | None = None) -> dict | None:
     """Query the TCGdex API for card details.
@@ -204,17 +220,21 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
 
     number = ""
     promo_match = None
+    set_name = None
     if number_text:
         number = clean_number(number_text)
         promo_match = PROMO_REGEX.search(number_text)
+        set_name = parse_set(number_text)
 
-    result = {"Name": name, "Number": number, "Set": "Unknown"}
+    result = {"Name": name, "Number": number, "Set": set_name or "Unknown"}
 
     if promo_match:
         card_id = promo_match.group(1).lower().replace(" ", "-")
         result["Number"] = promo_match.group(1)
         result["Set"] = PROMO_SETS.get(promo_match.group(1).split()[0], "Unknown")
         api_data = query_card_by_id(card_id)
+    elif set_name:
+        api_data = query_tcg_api(None, number, set_name)
     else:
         api_data = query_tcg_api(name, number)
 

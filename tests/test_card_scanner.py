@@ -170,3 +170,36 @@ def test_scan_image_promo_number(tmp_path, monkeypatch):
     assert data["Name"] == "Promo"
     assert data["Number"] == "SVP EN 126"
     assert data["Set"] == "svpromos"
+
+
+def test_lookup_with_number_and_set(tmp_path, monkeypatch):
+    img_path = tmp_path / "lookup.jpg"
+    create_dummy_image(img_path, size=(200, 300))
+    monkeypatch.setattr(card_scanner.Image, "open", lambda p: card_scanner.Image.Image(size=(200, 300)))
+
+    calls = []
+
+    def fake_extract_text(image, config=None):
+        calls.append(image.size)
+        if image.size == (160, 66):
+            return "Wrong Name"
+        return "Set: Base\n1/102"
+
+    monkeypatch.setattr(card_scanner, "extract_text", fake_extract_text)
+    monkeypatch.setattr(card_scanner, "enhance_for_ocr", lambda img: img)
+
+    captured = {}
+
+    def fake_api(name, number, set_name=None):
+        captured["name"] = name
+        captured["number"] = number
+        captured["set"] = set_name
+        return {"Name": "Pikachu", "Number": number, "Set": set_name}
+
+    monkeypatch.setattr(card_scanner, "query_tcg_api", fake_api)
+
+    data = card_scanner.scan_image(img_path)
+
+    assert captured == {"name": None, "number": "1/102", "set": "Base"}
+    assert data["Name"] == "Pikachu"
+    assert data["Set"] == "Base"
