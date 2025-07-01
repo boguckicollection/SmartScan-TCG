@@ -120,6 +120,14 @@ def scan_image(path: Path) -> dict:
     image = Image.open(path)
     width, height = image.size
 
+    # When the image is already a small, cropped fragment (e.g. prepared
+    # name/number snippet) the default bounding boxes cut away most of the
+    # text.  In that case just run OCR on the whole image and parse the
+    # details from the result.
+    if width <= 120 and height <= 120:
+        full_text = _extract_text_compat(str(path), None)
+        return parse_card_text(full_text, full_text)
+
     # Name region - top portion of the card
     name_bbox = (
         0,

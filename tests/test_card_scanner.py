@@ -59,13 +59,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import scanner.card_scanner as card_scanner
 
 
-def create_dummy_image(path: Path) -> None:
-    Image.new("RGB", (100, 100), color="white").save(path)
+def create_dummy_image(path: Path, size=(100, 100)) -> None:
+    Image.new("RGB", size, color="white").save(path)
 
 
 def test_scan_image_fallback(tmp_path, monkeypatch):
     img_path = tmp_path / "test.jpg"
-    create_dummy_image(img_path)
+    # Larger image emulates a full card requiring bounding boxes
+    create_dummy_image(img_path, size=(200, 300))
+    monkeypatch.setattr(card_scanner.Image, "open", classmethod(lambda cls, p: card_scanner.Image(size=(200, 300))))
 
     calls = []
 
@@ -90,6 +92,27 @@ def test_scan_image_fallback(tmp_path, monkeypatch):
     assert not Path(calls[1][0]).exists()
     assert Path(calls[3][0]) != img_path
     assert not Path(calls[3][0]).exists()
+
+
+def test_scan_image_precropped(tmp_path, monkeypatch):
+    img_path = tmp_path / "precrop.jpg"
+    # Small square image triggers the precropped path
+    create_dummy_image(img_path, size=(100, 100))
+    monkeypatch.setattr(card_scanner.Image, "open", classmethod(lambda cls, p: card_scanner.Image(size=(100, 100))))
+    calls = []
+
+    def fake_extract_text(path, bbox=None):
+        calls.append((path, bbox))
+        return "Name\n1/102"
+
+    monkeypatch.setattr(card_scanner, "extract_text", fake_extract_text)
+
+    data = card_scanner.scan_image(img_path)
+
+    assert data["Name"] == "Name"
+    assert data["Number"] == "1/102"
+    # Only one OCR call should be made on the entire image
+    assert calls == [(str(img_path), None)]
 
 
 def test_export_to_csv(tmp_path):
