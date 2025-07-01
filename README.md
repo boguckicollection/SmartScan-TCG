@@ -14,3 +14,16 @@ python main.py
 ```
 
 The main menu lets you choose between scanning cards, viewing your collection, or analyzing Shoper sales.
+
+## Scanning cards from images
+
+Scans of cards placed in `assets/scans` can be processed in batch using
+`scanner/card_scanner.py`. The script performs OCR on each image and stores the
+results in `data/cards_scanned.csv`:
+
+```bash
+python scanner/card_scanner.py
+```
+
+Ensure the `tesseract` binary is installed and available in your `PATH` for OCR
+to work correctly.
