@@ -31,12 +31,32 @@ FORBIDDEN_WORDS = [
 
 SUFFIXES = ["V", "EX", "VMAX", "VSTAR", "GX"]
 
+# OCR configuration strings
+NAME_OCR_CONFIG = (
+    "--psm 6 -c tessedit_char_whitelist="
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'VEXSTAR0123456789"
+)
+NUMBER_OCR_CONFIG = "--psm 6 -c tessedit_char_whitelist=/0123456789"
+
 
 def clean_name(name: str) -> str:
     """Return a simplified card name for consistent comparison."""
     name = unidecode(name)
-    name = re.sub(r"[^a-zA-Z0-9 .]", "", name)
-    return name.strip()
+    # Keep only alphanumeric characters and apostrophes
+    cleaned = re.sub(r"[^a-zA-Z0-9' ]", " ", name)
+    words = cleaned.split()
+    blacklist = {
+        "trainer",
+        "supporter",
+        "basic",
+        "evolves",
+        "from",
+        "stage1",
+        "stage2",
+        "stage3",
+    }
+    filtered = [w for w in words if w.lower() not in blacklist and not any(c.isdigit() for c in w)]
+    return " ".join(filtered) if filtered else "Unknown"
 
 
 def is_valid_name_line(line: str) -> bool:
@@ -56,13 +76,19 @@ def extract_card_name(lines: list[str]) -> str:
     return "Unknown"
 
 
+def clean_number(text: str) -> str:
+    """Extract card number in the form ``X/Y`` from OCR text."""
+    match = re.search(r"\d{1,3}/\d{1,3}", text or "")
+    return match.group(0) if match else "Unknown"
+
+
 def enhance_for_ocr(image: Image.Image) -> Image.Image:
     """Improve contrast to help OCR."""
-    from PIL import ImageEnhance
+    from PIL import ImageEnhance, ImageFilter
 
     gray = image.convert("L")
-    enhancer = ImageEnhance.Contrast(gray)
-    return enhancer.enhance(2.0)
+    enhanced = ImageEnhance.Contrast(gray).enhance(2.0)
+    return enhanced.filter(ImageFilter.SHARPEN)
 
 
 def safe_crop(image: Image.Image, bbox: tuple[int, int, int, int]):
@@ -87,8 +113,7 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
 
     number = ""
     if number_text:
-        match = re.search(r"\d+/\d+", number_text)
-        number = match.group(0) if match else ""
+        number = clean_number(number_text)
 
     return {"Name": name, "Number": number}
 
@@ -103,7 +128,7 @@ def scan_image(path: Path) -> dict:
     # text.  In that case just run OCR on the whole image and parse the
     # details from the result.
     if width <= 120 and height <= 120:
-        full_text = extract_text(image)
+        full_text = extract_text(image, config=NAME_OCR_CONFIG)
         return parse_card_text(full_text, full_text)
 
     # Name region - top portion of the card
@@ -117,7 +142,7 @@ def scan_image(path: Path) -> dict:
     name_text = None
     if name_crop:
         name_crop = enhance_for_ocr(name_crop)
-        name_text = extract_text(name_crop)
+        name_text = extract_text(name_crop, config=NAME_OCR_CONFIG)
 
     # Number region - lower left corner
     number_bbox = (
@@ -127,7 +152,9 @@ def scan_image(path: Path) -> dict:
         int(height * 0.985),
     )
     number_crop = safe_crop(image, number_bbox)
-    number_text = extract_text(number_crop) if number_crop else None
+    number_text = (
+        extract_text(number_crop, config=NUMBER_OCR_CONFIG) if number_crop else None
+    )
 
     return parse_card_text(name_text, number_text)
 
