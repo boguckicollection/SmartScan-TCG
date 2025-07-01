@@ -1,12 +1,25 @@
 import os
+from pathlib import Path
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog, messagebox
+from scanner import card_scanner
 
 
 def start_scan():
-    print("> Tryb: Skanowanie kart")
-    # import scanner.scanner_gui
-    # scanner.scanner_gui.run()
+    paths = filedialog.askopenfilenames(
+        title="Wybierz skany kart",
+        filetypes=[("Image files", "*.jpg *.png")],
+    )
+    if not paths:
+        return
+
+    data = card_scanner.scan_files([Path(p) for p in paths])
+    output = Path("data/cards_scanned.csv")
+    card_scanner.export_to_csv(data, str(output))
+    messagebox.showinfo(
+        "Skanowanie zakonczone",
+        f"Zapisano {len(data)} rekordy do {output}"
+    )
 
 def start_viewer():
     print("> Tryb: Przeglądanie kolekcji")

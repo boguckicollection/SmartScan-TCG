@@ -73,6 +73,14 @@ def scan_directory(dir_path: Path) -> list:
     return results
 
 
+def scan_files(files: list[Path]) -> list:
+    """Scan a list of image paths."""
+    results = []
+    for img_path in files:
+        results.append(scan_image(img_path))
+    return results
+
+
 def main():
     scans_dir = Path("assets/scans")
     output_path = Path("data/cards_scanned.csv")

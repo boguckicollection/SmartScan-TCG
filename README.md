@@ -15,7 +15,9 @@ pip install -r requirements.txt
 python main.py
 ```
 
-The main menu lets you choose between scanning cards, viewing your collection, or analyzing Shoper sales.
+The main menu lets you choose between scanning cards, viewing your collection, or analyzing Shoper sales.  
+Selecting **Skanowanie kart** opens a dialog where you can choose image files from disk. The scanned data
+is saved to `data/cards_scanned.csv`.
 
 ## Scanning cards from images
 
