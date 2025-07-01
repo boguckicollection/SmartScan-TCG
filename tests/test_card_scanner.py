@@ -90,3 +90,16 @@ def test_scan_image_fallback(tmp_path, monkeypatch):
     assert not Path(calls[1][0]).exists()
     assert Path(calls[3][0]) != img_path
     assert not Path(calls[3][0]).exists()
+
+
+def test_export_to_csv(tmp_path):
+    rows = [
+        {"Name": "Test", "Number": "1/1", "Ilość": 2},
+        {"Name": "Foo", "Number": "2/2", "Ilość": 1},
+    ]
+    out_file = tmp_path / "out.csv"
+    card_scanner.export_to_csv(rows, str(out_file))
+    assert out_file.exists()
+    content = out_file.read_text()
+    assert "Name" in content
+    assert "Test" in content
