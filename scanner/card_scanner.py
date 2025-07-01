@@ -2,6 +2,11 @@
 
 from pathlib import Path
 import re
+import sys
+
+# Allow running the script directly from the ``scanner`` directory
+if __name__ == "__main__" and __package__ is None:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Use absolute imports so the script can be executed directly
 # or via ``python -m`` without package issues.
