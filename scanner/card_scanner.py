@@ -17,6 +17,7 @@ from scanner.ocr_engine import extract_text
 from PIL import Image
 from scanner.data_exporter import export_to_csv
 from unidecode import unidecode
+import requests
 
 
 FORBIDDEN_WORDS = [
@@ -102,10 +103,60 @@ def safe_crop(image: Image.Image, bbox: tuple[int, int, int, int]):
     return image.crop(bbox)
 
 
+API_URL = "https://api.tcgdex.net/v2/cards"
+
+
+def query_tcg_api(name: str | None, number: str | None, set_name: str | None = None) -> dict | None:
+    """Query the TCGdex API for card details.
+
+    Parameters
+    ----------
+    name : str or None
+        Name detected via OCR.
+    number : str or None
+        Card number detected via OCR.
+    set_name : str or None, optional
+        Additional set identifier.
+    """
+    params = {}
+    if name and name != "Unknown":
+        params["name"] = name
+    if number:
+        params["number"] = number
+    if set_name:
+        params["set"] = set_name
+    if not params:
+        return None
+
+    try:
+        resp = requests.get(API_URL, params=params, timeout=5)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        return None
+
+    # ``data`` may be a list or a single card dict.
+    card = None
+    if isinstance(data, list):
+        if data:
+            card = data[0]
+    elif isinstance(data, dict):
+        card = data
+
+    if not isinstance(card, dict):
+        return None
+
+    return {
+        "Name": card.get("name"),
+        "Number": card.get("number"),
+        "Set": card.get("set", {}).get("id") if isinstance(card.get("set"), dict) else card.get("set"),
+    }
+
+
 
 
 def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
-    """Parse card name and number from OCR text fragments."""
+    """Parse card name and number from OCR text fragments and query the API."""
     name = "Unknown"
     if name_text:
         lines = [line.strip() for line in name_text.splitlines() if line.strip()]
@@ -115,7 +166,13 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
     if number_text:
         number = clean_number(number_text)
 
-    return {"Name": name, "Number": number}
+    result = {"Name": name, "Number": number, "Set": "Unknown"}
+
+    api_data = query_tcg_api(name, number)
+    if api_data:
+        result.update({k: v for k, v in api_data.items() if v})
+
+    return result
 
 
 def scan_image(path: Path) -> dict:
