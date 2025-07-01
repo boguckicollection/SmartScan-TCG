@@ -27,7 +27,9 @@ class StubImage:
             f.write(b"")
 
 
-sys.modules.setdefault("PIL", types.SimpleNamespace(Image=StubImage))
+PIL_image_module = types.SimpleNamespace(Image=StubImage, new=StubImage.new, open=StubImage.open)
+sys.modules.setdefault("PIL.Image", PIL_image_module)
+sys.modules.setdefault("PIL", types.SimpleNamespace(Image=PIL_image_module))
 Image = StubImage
 sys.modules.setdefault(
     "pytesseract",
@@ -63,56 +65,50 @@ def create_dummy_image(path: Path, size=(100, 100)) -> None:
     Image.new("RGB", size, color="white").save(path)
 
 
-def test_scan_image_fallback(tmp_path, monkeypatch):
+def test_scan_image_regions(tmp_path, monkeypatch):
     img_path = tmp_path / "test.jpg"
     # Larger image emulates a full card requiring bounding boxes
     create_dummy_image(img_path, size=(200, 300))
-    monkeypatch.setattr(card_scanner.Image, "open", classmethod(lambda cls, p: card_scanner.Image(size=(200, 300))))
+    monkeypatch.setattr(card_scanner.Image, "open", lambda p: card_scanner.Image.Image(size=(200, 300)))
 
     calls = []
 
-    def fake_extract_text(path, bbox=None):
-        calls.append((path, bbox))
-        if bbox is not None:
-            raise TypeError("unexpected keyword")
-        return "Name\nSet: Base\n1/102"
+    def fake_extract_text(image):
+        calls.append(image.size)
+        if image.size == (160, 66):
+            return "Name"
+        return "Set: Base\n1/102"
 
     monkeypatch.setattr(card_scanner, "extract_text", fake_extract_text)
+    monkeypatch.setattr(card_scanner, "enhance_for_ocr", lambda img: img)
 
     data = card_scanner.scan_image(img_path)
 
     assert data["Name"] == "Name"
     assert data["Number"] == "1/102"
-    # Each OCR region triggers a fallback, so four calls total
-    assert len(calls) == 4
-    assert calls[1][1] is None
-    assert calls[3][1] is None
-    # Temporary files should be used for fallback calls
-    assert Path(calls[1][0]) != img_path
-    assert not Path(calls[1][0]).exists()
-    assert Path(calls[3][0]) != img_path
-    assert not Path(calls[3][0]).exists()
+    assert calls == [(160, 66), (70, 19)]
 
 
 def test_scan_image_precropped(tmp_path, monkeypatch):
     img_path = tmp_path / "precrop.jpg"
     # Small square image triggers the precropped path
     create_dummy_image(img_path, size=(100, 100))
-    monkeypatch.setattr(card_scanner.Image, "open", classmethod(lambda cls, p: card_scanner.Image(size=(100, 100))))
+    monkeypatch.setattr(card_scanner.Image, "open", lambda p: card_scanner.Image.Image(size=(100, 100)))
     calls = []
 
-    def fake_extract_text(path, bbox=None):
-        calls.append((path, bbox))
+    def fake_extract_text(image):
+        calls.append(image.size)
         return "Name\n1/102"
 
     monkeypatch.setattr(card_scanner, "extract_text", fake_extract_text)
+    monkeypatch.setattr(card_scanner, "enhance_for_ocr", lambda img: img)
 
     data = card_scanner.scan_image(img_path)
 
     assert data["Name"] == "Name"
     assert data["Number"] == "1/102"
     # Only one OCR call should be made on the entire image
-    assert calls == [(str(img_path), None)]
+    assert calls == [(100, 100)]
 
 
 def test_export_to_csv(tmp_path):
