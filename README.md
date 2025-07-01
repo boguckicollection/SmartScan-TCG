@@ -1,6 +1,8 @@
 # TCG Organizer
 
-![TCG Organizer Logo](assets/logo.png)
+<p align="center">
+  <img src="assets/logo.png" alt="TCG Organizer Logo" width="200" />
+</p>
 
 TCG Organizer provides a simple GUI for scanning cards, browsing your collection, and analyzing sales data. The application uses a Tkinter-based interface and relies on optional Azure theme assets located in the `assets/config` directory.
 
@@ -40,4 +42,8 @@ python card_scanner.py
 ```
 
 Ensure the `tesseract` binary is installed and available in your `PATH` for OCR
-to work correctly.
+to work correctly. If you are on Windows, download the installer from
+[UB Mannheim's release page](https://github.com/UB-Mannheim/tesseract/wiki) and
+add the installation directory (e.g. `C:\\Program Files\\Tesseract-OCR`) to
+your `PATH`. Alternatively set the `TESSERACT_CMD` environment variable to the
+full path of `tesseract.exe`.
