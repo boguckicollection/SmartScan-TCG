@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 from collections import defaultdict
-import os
 import re
 import sys
-import tempfile
 
 # Allow running the script directly from the ``scanner`` directory
 if __name__ == "__main__" and __package__ is None:
@@ -78,26 +76,6 @@ def safe_crop(image: Image.Image, bbox: tuple[int, int, int, int]):
     return image.crop(bbox)
 
 
-def _extract_text_compat(path: str, bbox: tuple | None) -> str:
-    """Call :func:`extract_text` with optional bounding box support.
-
-    Older versions of :func:`extract_text` did not accept a ``bbox`` keyword
-    argument.  This helper catches ``TypeError`` and falls back to cropping the
-    image manually before calling ``extract_text`` again without ``bbox``.
-    """
-    try:
-        return extract_text(path, bbox=bbox)
-    except TypeError:
-        image = Image.open(path)
-        if bbox:
-            image = image.crop(bbox)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(path).suffix) as tmp:
-            tmp_path = tmp.name
-        image.save(tmp_path)
-        try:
-            return extract_text(tmp_path)
-        finally:
-            os.remove(tmp_path)
 
 
 def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
@@ -125,7 +103,7 @@ def scan_image(path: Path) -> dict:
     # text.  In that case just run OCR on the whole image and parse the
     # details from the result.
     if width <= 120 and height <= 120:
-        full_text = _extract_text_compat(str(path), None)
+        full_text = extract_text(image)
         return parse_card_text(full_text, full_text)
 
     # Name region - top portion of the card
@@ -135,7 +113,11 @@ def scan_image(path: Path) -> dict:
         int(width * 0.8),
         int(height * 0.22),
     )
-    name_text = _extract_text_compat(str(path), name_bbox)
+    name_crop = safe_crop(image, name_bbox)
+    name_text = None
+    if name_crop:
+        name_crop = enhance_for_ocr(name_crop)
+        name_text = extract_text(name_crop)
 
     # Number region - lower left corner
     number_bbox = (
@@ -144,7 +126,8 @@ def scan_image(path: Path) -> dict:
         int(width * 0.40),
         int(height * 0.985),
     )
-    number_text = _extract_text_compat(str(path), number_bbox)
+    number_crop = safe_crop(image, number_bbox)
+    number_text = extract_text(number_crop) if number_crop else None
 
     return parse_card_text(name_text, number_text)
 
