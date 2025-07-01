@@ -40,4 +40,8 @@ python card_scanner.py
 ```
 
 Ensure the `tesseract` binary is installed and available in your `PATH` for OCR
-to work correctly.
+to work correctly. If you are on Windows, download the installer from
+[UB Mannheim's release page](https://github.com/UB-Mannheim/tesseract/wiki) and
+add the installation directory (e.g. `C:\\Program Files\\Tesseract-OCR`) to
+your `PATH`. Alternatively set the `TESSERACT_CMD` environment variable to the
+full path of `tesseract.exe`.
