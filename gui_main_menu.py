@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import ttk
 
@@ -21,6 +22,9 @@ def start_sales():
 def main():
     root = tk.Tk()
     root.title("TCG Organizer")
+    icon_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
+    if os.path.exists(icon_path):
+        root.iconphoto(False, tk.PhotoImage(file=icon_path))
     root.geometry("400x420")
     root.resizable(False, False)
 

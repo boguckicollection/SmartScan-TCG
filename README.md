@@ -1,6 +1,8 @@
 # TCG Organizer
 
-![TCG Organizer Logo](assets/logo.png)
+<p align="center">
+  <img src="assets/logo.png" alt="TCG Organizer Logo" width="200" />
+</p>
 
 TCG Organizer provides a simple GUI for scanning cards, browsing your collection, and analyzing sales data. The application uses a Tkinter-based interface and relies on optional Azure theme assets located in the `assets/config` directory.
 
