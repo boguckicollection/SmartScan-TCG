@@ -64,7 +64,7 @@ Scanning cards also requires two PyTorch models located inside the
 
 - `card_model.pt` &ndash; predicts the card identifier
 - `type_model.pt` &ndash; detects whether the scan is a holo, reverse or
-  common card
+ common card
 
 Download the pretrained weights from the project's releases page and place the
 files directly in the `scanner/` folder. If downloads are unavailable you can
@@ -76,6 +76,9 @@ train the models yourself:
    `type_model.pt` from this dataset.
 3. Train `scanner.classifier.CardClassifier` with your own labeled images to
    generate `card_model.pt`.
+
+Helper functions for loading and training these networks are available in
+`scanner.card_model` and `scanner.type_model`.
 
 Without these files the scanning GUI will raise **"Card classifier model not
 found"** when it tries to load the models.
