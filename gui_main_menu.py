@@ -6,6 +6,7 @@ from scanner import card_scanner
 import sv_ttk
 
 _root: tk.Tk | None = None
+_sidebar: ttk.Frame | None = None
 _content: ttk.Frame | None = None
 
 
@@ -16,46 +17,45 @@ def clear_content() -> None:
             widget.destroy()
 
 
-def show_main_menu() -> None:
-    """Display the main menu options."""
-    clear_content()
-    if _content is None:
+def build_sidebar() -> None:
+    """Create navigation buttons on the sidebar."""
+    if _sidebar is None:
         return
-    ttk.Label(_content, text="Wybierz tryb pracy", font=("Segoe UI", 11)).pack(pady=(0, 20))
+    for widget in _sidebar.winfo_children():
+        widget.destroy()
     ttk.Button(
-        _content,
-        text="0. Dashboard",
+        _sidebar,
+        text="Dashboard",
         command=start_dashboard,
-        style="Accent.TButton",
-        width=28,
-    ).pack(pady=10)
+        width=18,
+    ).pack(pady=2, fill="x")
     ttk.Button(
-        _content,
-        text="1. Skanowanie kart",
+        _sidebar,
+        text="Skanowanie kart",
         command=start_scan,
-        style="Accent.TButton",
-        width=28,
-    ).pack(pady=10)
+        width=18,
+    ).pack(pady=2, fill="x")
     ttk.Button(
-        _content,
-        text="2. Przeglądanie kolekcji",
+        _sidebar,
+        text="Przeglądanie kolekcji",
         command=start_viewer,
-        style="Accent.TButton",
-        width=28,
-    ).pack(pady=10)
+        width=18,
+    ).pack(pady=2, fill="x")
     ttk.Button(
-        _content,
-        text="3. Analiza sprzedaży (Shoper)",
+        _sidebar,
+        text="Analiza sprzedaży",
         command=start_sales,
-        style="Accent.TButton",
-        width=28,
-    ).pack(pady=10)
+        width=18,
+    ).pack(pady=2, fill="x")
 
 
 def start_dashboard() -> None:
-    """Launch the dashboard window."""
-    import dashboard.dashboard_gui as dashboard_gui
-    dashboard_gui.run()
+    """Display the dashboard in the content area."""
+    clear_content()
+    if _content is None:
+        return
+    from dashboard.dashboard_gui import DashboardFrame
+    DashboardFrame(_content).pack(fill="both", expand=True)
 
 
 def start_scan() -> None:
@@ -112,7 +112,7 @@ def show_scan_progress(paths: list[Path]) -> None:
     status = ttk.Label(frame, text=f"0 / {len(paths)}")
     status.pack(pady=(0, 10))
 
-    back_btn = ttk.Button(frame, text="Powrót do menu", command=show_main_menu, state="disabled")
+    back_btn = ttk.Button(frame, text="Powrót", command=start_dashboard, state="disabled")
     back_btn.pack(pady=(10, 0))
 
     def update_progress(current: int, total: int) -> None:
@@ -144,7 +144,7 @@ def start_viewer() -> None:
     frame = ttk.Frame(_content)
     frame.pack(fill="both", expand=True)
     viewer_gui.run(str(csv_path), master=frame)
-    ttk.Button(frame, text="Powrót do menu", command=show_main_menu).pack(pady=10)
+    ttk.Button(frame, text="Powrót", command=start_dashboard).pack(pady=10)
 
 def start_sales():
     print("> Tryb: Analiza sprzedaży (Shoper)")
@@ -153,15 +153,15 @@ def start_sales():
 
 
 def main():
-    global _root, _content
+    global _root, _sidebar, _content
     root = tk.Tk()
     _root = root
     root.title("TCG Organizer")
     icon_path = Path(__file__).resolve().parent / "assets" / "logo.png"
     if icon_path.exists():
         root.iconphoto(False, tk.PhotoImage(file=icon_path))
-    root.geometry("400x480")
-    root.resizable(False, False)
+    root.geometry("900x600")
+    root.resizable(True, True)
 
     # Styl "Sun Valley" (sv-ttk) przypominający Windows 11
     style = ttk.Style(root)
@@ -180,12 +180,19 @@ def main():
     else:
         ttk.Label(root, text="TCG Organizer", font=("Segoe UI", 18, "bold")).pack(pady=(20, 10))
 
-    _content = ttk.Frame(root)
-    _content.pack(fill="both", expand=True)
+    body = ttk.Frame(root)
+    body.pack(fill="both", expand=True)
+
+    _sidebar = ttk.Frame(body)
+    _sidebar.pack(side="left", fill="y", padx=10, pady=10)
+
+    _content = ttk.Frame(body)
+    _content.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
     ttk.Label(root, text="power by boguckicollection", font=("Segoe UI", 8)).pack(side="bottom", pady=10)
 
-    show_main_menu()
+    build_sidebar()
+    start_dashboard()
     root.mainloop()
 
 

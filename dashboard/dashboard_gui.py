@@ -11,18 +11,14 @@ import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-
 DATA_FILE = Path("data/cards_batch_0001.csv")
 
 
-class Dashboard(tk.Tk):
-    """Main dashboard window."""
+class DashboardFrame(ttk.Frame):
+    """Dashboard view that can be embedded in another window."""
 
-    def __init__(self) -> None:
-        super().__init__()
-        self.title("SmartScan Dashboard")
-        self.geometry("900x600")
-        self.configure(bg="#f4f4f7")
+    def __init__(self, master: tk.Misc) -> None:
+        super().__init__(master)
 
         self._sidebar = ttk.Frame(self)
         self._sidebar.pack(side="left", fill="y", padx=0, pady=0)
@@ -36,7 +32,7 @@ class Dashboard(tk.Tk):
             "Dashboard",
             "Kolekcja",
             "Skanowanie",
-            "Sprzeda\u017c",
+            "Sprzedaż",
             "Statystyki",
             "Ustawienia",
         ]:
@@ -99,8 +95,8 @@ class Dashboard(tk.Tk):
             vals = [random.randint(0, len(self.df) or 1) for _ in days]
             ax.plot(days, vals, marker="o")
         ax.set_title("Liczba kart vs czas")
-        ax.set_xlabel("Dzie\u0144")
-        ax.set_ylabel("Ilo\u015b\u0107")
+        ax.set_xlabel("Dzień")
+        ax.set_ylabel("Ilość")
         canvas = FigureCanvasTkAgg(line_fig, master=self._charts_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(side="left", fill="both", expand=True)
@@ -119,7 +115,7 @@ class Dashboard(tk.Tk):
 
     # --- Table -------------------------------------------------------------
     def create_sets_table(self) -> None:
-        columns = ("Set", "Ilo\u015b\u0107")
+        columns = ("Set", "Ilość")
         tree = ttk.Treeview(self._table_frame, columns=columns, show="headings")
         for col in columns:
             tree.heading(col, text=col)
@@ -127,6 +123,18 @@ class Dashboard(tk.Tk):
             for set_name, group in self.df.groupby("Set"):
                 tree.insert("", "end", values=(set_name, len(group)))
         tree.pack(fill="both", expand=True)
+
+
+class Dashboard(tk.Tk):
+    """Main dashboard window."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.title("SmartScan Dashboard")
+        self.geometry("900x600")
+        self.configure(bg="#f4f4f7")
+
+        DashboardFrame(self).pack(fill="both", expand=True)
 
 
 def run() -> None:
