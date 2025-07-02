@@ -16,8 +16,9 @@ python main.py
 ```
 
 The main menu lets you choose between scanning cards, viewing your collection, analyzing Shoper sales, or opening a dashboard with basic statistics.
-Selecting **Skanowanie kart** opens a dialog where you can choose image files from disk. The scanned data
-is saved to `data/cards_scanned.csv`.
+Selecting **Skanowanie kart** opens a dialog where you can choose image files from disk. After scanning you
+can save the results to a CSV file inside the chosen directory (e.g. `data/K1/R3/50.csv`).
+Multiple such files can later be merged into `data/main.csv` from the main menu.
 
 The main window now displays the project logo at the top. During scanning an
 animation of sample cards plays above the progress bar providing visual
@@ -28,7 +29,7 @@ feedback.
 Scans of cards placed in `assets/scans` can be processed in batch using
 `scanner/card_scanner.py`. Execute the script from the repository root so that
 the ``scanner`` package is discoverable. The script performs OCR on each image
-and stores the results in `data/cards_scanned.csv`. It automatically crops
+and lets you save the results to a CSV file of your choice. It automatically crops
 regions with the card name and set information before running OCR to improve
 accuracy:
 

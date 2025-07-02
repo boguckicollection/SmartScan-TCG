@@ -43,6 +43,12 @@ def build_sidebar() -> None:
     ).pack(pady=2, fill="x")
     ttk.Button(
         _sidebar,
+        text="Scal CSV",
+        command=merge_csv_dialog,
+        width=18,
+    ).pack(pady=2, fill="x")
+    ttk.Button(
+        _sidebar,
         text="Analiza sprzedaży",
         command=start_sales,
         width=18,
@@ -122,18 +128,24 @@ def show_scan_progress(paths: list[Path]) -> None:
 
     data = card_scanner.scan_files(paths, progress_callback=update_progress)
     running = False
-    output = Path("data/cards_scanned.csv")
-    card_scanner.export_to_csv(data, str(output))
-    messagebox.showinfo(
-        "Skanowanie zakonczone",
-        f"Zapisano {len(data)} rekordy do {output}"
+    save_path = filedialog.asksaveasfilename(
+        title="Zapisz dane skanowania",
+        initialdir="data",
+        defaultextension=".csv",
+        filetypes=[("CSV", "*.csv")],
     )
+    if save_path:
+        card_scanner.export_to_csv(data, save_path)
+        messagebox.showinfo(
+            "Skanowanie zakonczone",
+            f"Zapisano {len(data)} rekordy do {save_path}"
+        )
     back_btn.config(state="normal")
 
 
 def start_viewer() -> None:
-    """Open the collection viewer for ``data/cards_batch_0001.csv``."""
-    csv_path = Path("data/cards_batch_0001.csv")
+    """Open the collection viewer for ``data/main.csv``."""
+    csv_path = Path("data/main.csv")
     if not csv_path.exists():
         messagebox.showerror("Brak pliku", f"Nie znaleziono {csv_path}")
         return
@@ -145,6 +157,24 @@ def start_viewer() -> None:
     frame.pack(fill="both", expand=True)
     viewer_gui.run(str(csv_path), master=frame)
     ttk.Button(frame, text="Powrót", command=start_dashboard).pack(pady=10)
+
+
+def merge_csv_dialog() -> None:
+    """Merge selected CSV files into ``data/main.csv``."""
+    paths = filedialog.askopenfilenames(
+        title="Wybierz pliki CSV",
+        initialdir="data",
+        filetypes=[("CSV", "*.csv")],
+    )
+    if not paths:
+        return
+    from viewer.collection_utils import merge_csv_files
+    output = Path("data/main.csv")
+    merge_csv_files(list(paths), str(output))
+    messagebox.showinfo(
+        "Scalanie zakonczone",
+        f"Zapisano dane do {output}"
+    )
 
 def start_sales():
     print("> Tryb: Analiza sprzedaży (Shoper)")

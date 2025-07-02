@@ -11,7 +11,7 @@ import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-DATA_FILE = Path("data/cards_batch_0001.csv")
+DATA_FILE = Path("data/main.csv")
 
 
 class DashboardFrame(ttk.Frame):

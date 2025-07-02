@@ -58,7 +58,10 @@ def run(
         detail = tk.Toplevel(container)
         detail.title(df.at[idx, "Name"] if "Name" in df.columns else "Card")
 
-        img_path = Path(images_dir) / f"img{idx+1:04d}.jpg"
+        if "ImagePath" in df.columns:
+            img_path = Path(df.at[idx, "ImagePath"])
+        else:
+            img_path = Path(images_dir) / f"img{idx+1:04d}.jpg"
         if img_path.exists():
             img = Image.open(img_path)
             img.thumbnail((300, 420))
@@ -86,7 +89,10 @@ def run(
         ttk.Button(detail, text="Zapisz", command=save).pack(pady=10)
 
     for i, row in df.iterrows():
-        img_path = Path(images_dir) / f"img{i+1:04d}.jpg"
+        if "ImagePath" in df.columns:
+            img_path = Path(row["ImagePath"])
+        else:
+            img_path = Path(images_dir) / f"img{i+1:04d}.jpg"
         if img_path.exists():
             img = Image.open(img_path)
             img.thumbnail((100, 140))
