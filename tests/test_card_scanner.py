@@ -202,7 +202,7 @@ def test_lookup_with_number_and_set(tmp_path, monkeypatch):
 
     assert api_calls == [
         {"name": "Wrong Name", "number": "1/102", "set": None},
-        {"name": None, "number": "1/102", "set": "Base"},
+        {"name": None, "number": "1/102", "set": None},
     ]
     assert data["Name"] == "Pikachu"
     assert data["Set"] == "Base"

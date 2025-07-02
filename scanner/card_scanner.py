@@ -163,32 +163,25 @@ def query_tcg_api(name: str | None, number: str | None, set_name: str | None = N
         params["number"] = number
     if set_name:
         params["set"] = set_name
-    if not params:
-        return None
 
     try:
         resp = requests.get(API_URL, params=params, timeout=5)
         resp.raise_for_status()
         data = resp.json()
-    except Exception:
+
+        if not data or "cards" not in data or not data["cards"]:
+            print(f"[API] No results for params: {params}")
+            return None
+
+        card = data["cards"][0]
+        return {
+            "Name": card.get("name"),
+            "Number": card.get("number"),
+            "Set": card.get("set", {}).get("id") if isinstance(card.get("set"), dict) else card.get("set"),
+        }
+    except Exception as e:
+        print(f"[API] Error: {e} for params: {params}")
         return None
-
-    # ``data`` may be a list or a single card dict.
-    card = None
-    if isinstance(data, list):
-        if data:
-            card = data[0]
-    elif isinstance(data, dict):
-        card = data
-
-    if not isinstance(card, dict):
-        return None
-
-    return {
-        "Name": card.get("name"),
-        "Number": card.get("number"),
-        "Set": card.get("set", {}).get("id") if isinstance(card.get("set"), dict) else card.get("set"),
-    }
 
 
 def query_card_by_id(card_id: str) -> dict | None:
@@ -236,6 +229,9 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
         api_data = query_card_by_id(card_id)
     else:
         api_data = query_tcg_api(name, number)
+        if not api_data and number:
+            print(f"[API fallback] Retrying with only number: {number}")
+            api_data = query_tcg_api(None, number)
         if not api_data and set_name:
             api_data = query_tcg_api(None, number, set_name)
 
