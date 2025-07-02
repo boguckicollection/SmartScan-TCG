@@ -413,7 +413,9 @@ def scan_image(path: Path) -> dict:
     if width <= 120 and height <= 120:
         full_text = extract_text(image, config=NAME_OCR_CONFIG)
         cleaned_full = clean_card_name(full_text)
-        return parse_card_text(full_text, full_text, cleaned_full)
+        result = parse_card_text(full_text, full_text, cleaned_full)
+        result["ImagePath"] = str(path)
+        return result
 
     # Name region - top portion of the card
     name_bbox = (
@@ -442,7 +444,9 @@ def scan_image(path: Path) -> dict:
         extract_text(number_crop, config=NUMBER_OCR_CONFIG) if number_crop else None
     )
 
-    return parse_card_text(name_text, number_text, cleaned_name)
+    result = parse_card_text(name_text, number_text, cleaned_name)
+    result["ImagePath"] = str(path)
+    return result
 
 
 def scan_directory(dir_path: Path) -> list:
