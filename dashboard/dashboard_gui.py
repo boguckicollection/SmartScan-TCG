@@ -86,13 +86,22 @@ class DashboardFrame(ttk.Frame):
             self._stats_frame.columnconfigure(i, weight=1)
 
     # --- Charts ------------------------------------------------------------
+    def _to_mpl_color(self, color: str) -> str:
+        """Convert Tk color names to a hex string for Matplotlib."""
+        try:
+            r, g, b = self.winfo_rgb(color)
+        except tk.TclError:
+            return color
+        return f"#{r//256:02x}{g//256:02x}{b//256:02x}"
+
     def create_charts(self) -> None:
         try:
             bg = self.cget("background")
         except tk.TclError:
             bg = self.winfo_toplevel().cget("background")
-        line_fig = Figure(figsize=(4, 3), dpi=100, facecolor=bg)
-        ax = line_fig.add_subplot(111, facecolor=bg)
+        mpl_bg = self._to_mpl_color(bg)
+        line_fig = Figure(figsize=(4, 3), dpi=100, facecolor=mpl_bg)
+        ax = line_fig.add_subplot(111, facecolor=mpl_bg)
         if "Date" in self.df.columns:
             counts = self.df.groupby("Date").size().sort_index()
             ax.plot(counts.index, counts.values, marker="o")
@@ -108,8 +117,8 @@ class DashboardFrame(ttk.Frame):
         canvas.draw()
         canvas.get_tk_widget().pack(side="left", fill="both", expand=True)
 
-        pie_fig = Figure(figsize=(4, 3), dpi=100, facecolor=bg)
-        ax2 = pie_fig.add_subplot(111, facecolor=bg)
+        pie_fig = Figure(figsize=(4, 3), dpi=100, facecolor=mpl_bg)
+        ax2 = pie_fig.add_subplot(111, facecolor=mpl_bg)
         if "Rarity" in self.df.columns and not self.df.empty:
             counts = self.df["Rarity"].value_counts()
             ax2.pie(counts.values, labels=counts.index, autopct="%1.0f%%")
