@@ -4,10 +4,11 @@ def test_label_image(tmp_path, monkeypatch):
     img = tmp_path / 'img.jpg'
     img.write_text('')
 
-    monkeypatch.setattr(db, 'scan_image', lambda p: {'Set': 'Base', 'Number': '1/102'})
+    monkeypatch.setattr(db, 'scan_image', lambda p: {'Name': 'Test', 'Set': 'Base', 'Number': '1/102'})
     monkeypatch.setattr(db, 'analyze_image', lambda p: {'holo': True, 'reverse': False})
 
     row = db.label_image(img)
+    assert row['name'] == 'Test'
     assert row['card_id'] == 'Base-1/102'
     assert row['holo'] is True
     assert row['reverse'] is False
@@ -18,7 +19,7 @@ def test_build_dataset(tmp_path, monkeypatch):
     img1.write_text('')
     img2.write_text('')
 
-    monkeypatch.setattr(db, 'scan_image', lambda p: {'Set': 'Set', 'Number': '2'})
+    monkeypatch.setattr(db, 'scan_image', lambda p: {'Name': 'X', 'Set': 'Set', 'Number': '2'})
     monkeypatch.setattr(db, 'analyze_image', lambda p: {'holo': False, 'reverse': True})
 
     out_csv = tmp_path / 'out.csv'
@@ -26,4 +27,4 @@ def test_build_dataset(tmp_path, monkeypatch):
     assert len(rows) == 2
     assert out_csv.exists()
     text = out_csv.read_text()
-    assert 'image_path,card_id,set,holo,reverse' in text
+    assert 'image_path,name,card_id,set,holo,reverse' in text
