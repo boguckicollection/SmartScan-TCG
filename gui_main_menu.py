@@ -43,6 +43,12 @@ def build_sidebar() -> None:
     ).pack(pady=2, fill="x")
     ttk.Button(
         _sidebar,
+        text="Edycja treningu",
+        command=start_training_editor,
+        width=18,
+    ).pack(pady=2, fill="x")
+    ttk.Button(
+        _sidebar,
         text="Scal CSV",
         command=merge_csv_dialog,
         width=18,
@@ -184,6 +190,19 @@ def start_viewer() -> None:
     frame = ttk.Frame(_content)
     frame.pack(fill="both", expand=True)
     viewer_gui.run(str(csv_path), master=frame)
+    ttk.Button(frame, text="Powrót", command=start_dashboard).pack(pady=10)
+
+
+def start_training_editor() -> None:
+    """Open editor for the training dataset."""
+    csv_path = Path("scanner/dataset.csv")
+    clear_content()
+    if _content is None:
+        return
+    import scanner.training_editor_gui as teg
+    frame = ttk.Frame(_content)
+    frame.pack(fill="both", expand=True)
+    teg.run(str(csv_path), master=frame)
     ttk.Button(frame, text="Powrót", command=start_dashboard).pack(pady=10)
 
 
