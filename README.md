@@ -19,6 +19,10 @@ The main menu lets you choose between scanning cards, viewing your collection, o
 Selecting **Skanowanie kart** opens a dialog where you can choose image files from disk. The scanned data
 is saved to `data/cards_scanned.csv`.
 
+The main window now displays the project logo at the top. During scanning an
+animation of sample cards plays above the progress bar providing visual
+feedback.
+
 ## Scanning cards from images
 
 Scans of cards placed in `assets/scans` can be processed in batch using
