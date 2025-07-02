@@ -5,23 +5,69 @@ from PIL import Image, ImageTk
 from scanner import card_scanner
 import sv_ttk
 
+_root: tk.Tk | None = None
+_content: ttk.Frame | None = None
 
-def start_scan():
+
+def clear_content() -> None:
+    """Remove all widgets from the content frame."""
+    if _content is not None:
+        for widget in _content.winfo_children():
+            widget.destroy()
+
+
+def show_main_menu() -> None:
+    """Display the main menu options."""
+    clear_content()
+    if _content is None:
+        return
+    ttk.Label(_content, text="Wybierz tryb pracy", font=("Segoe UI", 11)).pack(pady=(0, 20))
+    ttk.Button(
+        _content,
+        text="1. Skanowanie kart",
+        command=start_scan,
+        style="Accent.TButton",
+        width=28,
+    ).pack(pady=10)
+    ttk.Button(
+        _content,
+        text="2. Przeglądanie kolekcji",
+        command=start_viewer,
+        style="Accent.TButton",
+        width=28,
+    ).pack(pady=10)
+    ttk.Button(
+        _content,
+        text="3. Analiza sprzedaży (Shoper)",
+        command=start_sales,
+        style="Accent.TButton",
+        width=28,
+    ).pack(pady=10)
+
+
+def start_scan() -> None:
     paths = filedialog.askopenfilenames(
         title="Wybierz skany kart",
         filetypes=[("Image files", "*.jpg *.png")],
     )
     if not paths:
         return
+    show_scan_progress([Path(p) for p in paths])
 
-    progress_win = tk.Toplevel()
-    progress_win.title("Postęp skanowania")
 
-    ttk.Label(progress_win, text="Skanowanie kart...").pack(padx=20, pady=(20, 5))
+def show_scan_progress(paths: list[Path]) -> None:
+    clear_content()
+    if _content is None:
+        return
+
+    frame = ttk.Frame(_content)
+    frame.pack(pady=20)
+
+    ttk.Label(frame, text="Skanowanie kart...").pack(padx=20, pady=(0, 5))
 
     scans_dir = Path(__file__).resolve().parent / "assets" / "scans"
     card_paths = sorted(scans_dir.glob("*.jpg"))[:10]
-    images = []
+    images: list[ImageTk.PhotoImage] = []
     for p in card_paths:
         try:
             img = Image.open(p)
@@ -30,9 +76,9 @@ def start_scan():
         except Exception:
             continue
 
-    img_label = ttk.Label(progress_win)
+    img_label = ttk.Label(frame)
     img_label.pack(pady=(5, 10))
-    progress_win.card_images = images
+    frame.card_images = images
 
     idx = 0
     running = True
@@ -43,34 +89,33 @@ def start_scan():
             return
         img_label.configure(image=images[idx])
         idx = (idx + 1) % len(images)
-        progress_win.after(200, animate)
+        frame.after(200, animate)
 
     animate()
 
     progress_var = tk.DoubleVar(value=0)
-    progress = ttk.Progressbar(
-        progress_win, variable=progress_var, maximum=len(paths), length=300
-    )
+    progress = ttk.Progressbar(frame, variable=progress_var, maximum=len(paths), length=300)
     progress.pack(padx=20, pady=10)
-    status = ttk.Label(progress_win, text=f"0 / {len(paths)}")
-    status.pack(pady=(0, 20))
+    status = ttk.Label(frame, text=f"0 / {len(paths)}")
+    status.pack(pady=(0, 10))
+
+    back_btn = ttk.Button(frame, text="Powrót do menu", command=show_main_menu, state="disabled")
+    back_btn.pack(pady=(10, 0))
 
     def update_progress(current: int, total: int) -> None:
         progress_var.set(current)
         status.config(text=f"{current} / {total}")
-        progress_win.update()
+        frame.update()
 
-    data = card_scanner.scan_files([Path(p) for p in paths], progress_callback=update_progress)
+    data = card_scanner.scan_files(paths, progress_callback=update_progress)
     running = False
-    progress_win.destroy()
     output = Path("data/cards_scanned.csv")
     card_scanner.export_to_csv(data, str(output))
     messagebox.showinfo(
         "Skanowanie zakonczone",
         f"Zapisano {len(data)} rekordy do {output}"
     )
-
-_root: tk.Tk | None = None
+    back_btn.config(state="normal")
 
 
 def start_viewer() -> None:
@@ -80,8 +125,13 @@ def start_viewer() -> None:
         messagebox.showerror("Brak pliku", f"Nie znaleziono {csv_path}")
         return
     import viewer.viewer_gui as viewer_gui
-
-    viewer_gui.run(str(csv_path), master=_root)
+    clear_content()
+    if _content is None:
+        return
+    frame = ttk.Frame(_content)
+    frame.pack(fill="both", expand=True)
+    viewer_gui.run(str(csv_path), master=frame)
+    ttk.Button(frame, text="Powrót do menu", command=show_main_menu).pack(pady=10)
 
 def start_sales():
     print("> Tryb: Analiza sprzedaży (Shoper)")
@@ -90,7 +140,7 @@ def start_sales():
 
 
 def main():
-    global _root
+    global _root, _content
     root = tk.Tk()
     _root = root
     root.title("TCG Organizer")
@@ -102,11 +152,10 @@ def main():
 
     # Styl "Sun Valley" (sv-ttk) przypominający Windows 11
     style = ttk.Style(root)
-    sv_ttk.set_theme("light")
+    sv_ttk.set_theme("dark")
 
     logo_path = Path(__file__).resolve().parent / "assets" / "logo.png"
     if logo_path.exists():
-        # shrink the logo and place it next to the title
         img = Image.open(logo_path)
         img.thumbnail((48, 48))
         logo_img = ImageTk.PhotoImage(img)
@@ -117,20 +166,13 @@ def main():
         root.logo_img = logo_img
     else:
         ttk.Label(root, text="TCG Organizer", font=("Segoe UI", 18, "bold")).pack(pady=(20, 10))
-    ttk.Label(root, text="Wybierz tryb pracy", font=("Segoe UI", 11)).pack(pady=(0, 20))
 
-    # Przycisk: skanowanie
-    ttk.Button(root, text="1. Skanowanie kart", command=start_scan, style="Accent.TButton", width=28).pack(pady=10)
+    _content = ttk.Frame(root)
+    _content.pack(fill="both", expand=True)
 
-    # Przycisk: przeglądanie kolekcji
-    ttk.Button(root, text="2. Przeglądanie kolekcji", command=start_viewer, style="Accent.TButton", width=28).pack(pady=10)
-
-    # Przycisk: analiza sprzedaży
-    ttk.Button(root, text="3. Analiza sprzedaży (Shoper)", command=start_sales, style="Accent.TButton", width=28).pack(pady=10)
-
-    # Stopka
     ttk.Label(root, text="power by boguckicollection", font=("Segoe UI", 8)).pack(side="bottom", pady=10)
 
+    show_main_menu()
     root.mainloop()
 
 
