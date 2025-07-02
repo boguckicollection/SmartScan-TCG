@@ -87,7 +87,10 @@ class DashboardFrame(ttk.Frame):
 
     # --- Charts ------------------------------------------------------------
     def create_charts(self) -> None:
-        bg = self.cget("background")
+        try:
+            bg = self.cget("background")
+        except tk.TclError:
+            bg = self.winfo_toplevel().cget("background")
         line_fig = Figure(figsize=(4, 3), dpi=100, facecolor=bg)
         ax = line_fig.add_subplot(111, facecolor=bg)
         if "Date" in self.df.columns:
