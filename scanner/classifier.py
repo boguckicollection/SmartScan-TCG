@@ -5,7 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable, List
 
-from sklearn.base import BaseEstimator
+try:  # scikit-learn may be missing during testing
+    from sklearn.base import BaseEstimator
+except Exception:  # pragma: no cover - fallback for minimal environments
+    class BaseEstimator:  # type: ignore
+        """Fallback estimator base when scikit-learn is unavailable."""
+
+        pass
 
 try:
     import torch
