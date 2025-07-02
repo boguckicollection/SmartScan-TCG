@@ -16,6 +16,15 @@ _scale: float = 1.0
 _root: ctk.CTk | None = None
 _sidebar: ctk.CTkFrame | None = None
 _content: ctk.CTkFrame | None = None
+_nav_buttons: dict[str, ctk.CTkButton] = {}
+
+
+def _on_nav(btn: ctk.CTkButton, cmd) -> None:
+    """Highlight the active navigation button and execute its command."""
+    for b in _nav_buttons.values():
+        b.configure(fg_color="#333333")
+    btn.configure(fg_color="#555555")
+    cmd()
 
 
 def clear_content() -> None:
@@ -31,46 +40,28 @@ def build_sidebar() -> None:
         return
     for widget in _sidebar.winfo_children():
         widget.destroy()
-    ctk.CTkButton(
-        _sidebar,
-        text="Dashboard",
-        command=start_dashboard,
-        width=140,
-    ).pack(pady=2, fill="x")
-    ctk.CTkButton(
-        _sidebar,
-        text="Skanowanie kart",
-        command=start_scan,
-        width=140,
-    ).pack(pady=2, fill="x")
-    ctk.CTkButton(
-        _sidebar,
-        text="Przeglądanie kolekcji",
-        command=start_viewer,
-        width=140,
-    ).pack(pady=2, fill="x")
-    ctk.CTkButton(
-        _sidebar,
-        text="Edycja treningu",
-        command=start_training_editor,
-        width=140,
-    ).pack(pady=2, fill="x")
-    ctk.CTkButton(
-        _sidebar,
-        text="Scal CSV",
-        command=merge_csv_dialog,
-        width=140,
-    ).pack(pady=2, fill="x")
-    ctk.CTkButton(
-        _sidebar,
-        text="Analiza sprzedaży",
-        command=start_sales,
-        width=140,
-    ).pack(pady=2, fill="x")
+    def add_btn(name: str, cmd) -> None:
+        btn = ctk.CTkButton(
+            _sidebar,
+            text=name,
+            command=lambda: _on_nav(btn, cmd),
+            width=140,
+        )
+        btn.pack(pady=6, fill="x", padx=5)
+        _nav_buttons[name] = btn
+
+    add_btn("📊 Dashboard", start_dashboard)
+    add_btn("📷 Skanowanie kart", start_scan)
+    add_btn("📚 Przeglądanie kolekcji", start_viewer)
+    add_btn("📝 Edycja treningu", start_training_editor)
+    add_btn("🔗 Scal CSV", merge_csv_dialog)
+    add_btn("💰 Analiza sprzedaży", start_sales)
 
 
 def start_dashboard() -> None:
     """Display the dashboard in the content area."""
+    if "📊 Dashboard" in _nav_buttons:
+        _on_nav(_nav_buttons["📊 Dashboard"], lambda: None)
     clear_content()
     if _content is None:
         return
@@ -79,6 +70,8 @@ def start_dashboard() -> None:
 
 
 def start_scan() -> None:
+    if "📷 Skanowanie kart" in _nav_buttons:
+        _on_nav(_nav_buttons["📷 Skanowanie kart"], lambda: None)
     paths = filedialog.askopenfilenames(
         title="Wybierz skany kart",
         filetypes=[("Image files", "*.jpg *.png")],
@@ -96,7 +89,7 @@ def show_scan_progress(paths: list[Path]) -> None:
     frame = ctk.CTkFrame(_content, fg_color="#222222")
     frame.pack(pady=20)
 
-    ctk.CTkLabel(frame, text="Skanowanie kart...").pack(padx=20, pady=(0, 5))
+    ctk.CTkLabel(frame, text="Skanowanie kart... 🃏").pack(padx=20, pady=(0, 5))
 
     scans_dir = Path(__file__).resolve().parent / "assets" / "scans"
     card_paths = sorted(scans_dir.glob("*.jpg"))[:10]
@@ -187,6 +180,8 @@ def show_scan_results(data: list[dict]) -> None:
 
 def start_viewer() -> None:
     """Open the collection viewer for ``data/main.csv``."""
+    if "📚 Przeglądanie kolekcji" in _nav_buttons:
+        _on_nav(_nav_buttons["📚 Przeglądanie kolekcji"], lambda: None)
     csv_path = Path("data/main.csv")
     if not csv_path.exists():
         messagebox.showerror("Brak pliku", f"Nie znaleziono {csv_path}")
@@ -203,6 +198,8 @@ def start_viewer() -> None:
 
 def start_training_editor() -> None:
     """Open editor for the training dataset."""
+    if "📝 Edycja treningu" in _nav_buttons:
+        _on_nav(_nav_buttons["📝 Edycja treningu"], lambda: None)
     csv_path = Path("scanner/dataset.csv")
     clear_content()
     if _content is None:
@@ -216,6 +213,8 @@ def start_training_editor() -> None:
 
 def merge_csv_dialog() -> None:
     """Merge selected CSV files into ``data/main.csv``."""
+    if "🔗 Scal CSV" in _nav_buttons:
+        _on_nav(_nav_buttons["🔗 Scal CSV"], lambda: None)
     paths = filedialog.askopenfilenames(
         title="Wybierz pliki CSV",
         initialdir="data",
@@ -232,6 +231,8 @@ def merge_csv_dialog() -> None:
     )
 
 def start_sales():
+    if "💰 Analiza sprzedaży" in _nav_buttons:
+        _on_nav(_nav_buttons["💰 Analiza sprzedaży"], lambda: None)
     print("> Tryb: Analiza sprzedaży (Shoper)")
     # import sales.sales_gui
     # sales.sales_gui.run()
@@ -257,24 +258,27 @@ def main():
         bg_label.lower()
         root.bg_photo = bg_photo
 
+    body = ctk.CTkFrame(root, fg_color="#222222")
+    body.pack(fill="both", expand=True)
+
+    sidebar_bar = ctk.CTkFrame(body, fg_color="#555555", width=6)
+    sidebar_bar.pack(side="left", fill="y")
+
+    _sidebar = ctk.CTkFrame(body, fg_color="#333333", width=150)
+    _sidebar.pack(side="left", fill="y", padx=(0, 20), pady=10)
+
     logo_path = Path(__file__).resolve().parent / "assets" / "logo.png"
     if logo_path.exists():
         img = Image.open(logo_path)
         img.thumbnail((48, 48))
         logo_img = ctk.CTkImage(img)
-        header = ctk.CTkFrame(root, fg_color="transparent")
-        header.pack(pady=(20, 10))
+        header = ctk.CTkFrame(_sidebar, fg_color="transparent")
+        header.pack(pady=(10, 20))
         ctk.CTkLabel(header, image=logo_img, text="").pack(side="left", padx=(0, 10))
-        ctk.CTkLabel(header, text="TCG Organizer", font=TITLE_FONT).pack(side="left")
+        ctk.CTkLabel(header, text="🃏 TCG Organizer", font=TITLE_FONT).pack(side="left")
         root.logo_img = logo_img
     else:
-        ctk.CTkLabel(root, text="TCG Organizer", font=TITLE_FONT).pack(pady=(20, 10))
-
-    body = ctk.CTkFrame(root, fg_color="#222222")
-    body.pack(fill="both", expand=True)
-
-    _sidebar = ctk.CTkFrame(body, fg_color="#333333", width=150)
-    _sidebar.pack(side="left", fill="y", padx=10, pady=10)
+        ctk.CTkLabel(_sidebar, text="🃏 TCG Organizer", font=TITLE_FONT).pack(pady=(10, 20))
 
     _content = ctk.CTkFrame(body, fg_color="#222222")
     _content.pack(side="left", fill="both", expand=True, padx=10, pady=10)
@@ -303,7 +307,10 @@ def main():
     ctk.CTkLabel(root, text="power by boguckicollection", font=FOOTER_FONT).pack(side="bottom", pady=10)
 
     build_sidebar()
-    start_dashboard()
+    if "📊 Dashboard" in _nav_buttons:
+        _on_nav(_nav_buttons["📊 Dashboard"], start_dashboard)
+    else:
+        start_dashboard()
     root.mainloop()
 
 
