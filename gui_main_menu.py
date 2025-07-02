@@ -70,10 +70,18 @@ def start_scan():
         f"Zapisano {len(data)} rekordy do {output}"
     )
 
-def start_viewer():
-    print("> Tryb: Przeglądanie kolekcji")
-    # import viewer.viewer_gui
-    # viewer.viewer_gui.run()
+_root: tk.Tk | None = None
+
+
+def start_viewer() -> None:
+    """Open the collection viewer for ``data/cards_batch_0001.csv``."""
+    csv_path = Path("data/cards_batch_0001.csv")
+    if not csv_path.exists():
+        messagebox.showerror("Brak pliku", f"Nie znaleziono {csv_path}")
+        return
+    import viewer.viewer_gui as viewer_gui
+
+    viewer_gui.run(str(csv_path), master=_root)
 
 def start_sales():
     print("> Tryb: Analiza sprzedaży (Shoper)")
@@ -82,7 +90,9 @@ def start_sales():
 
 
 def main():
+    global _root
     root = tk.Tk()
+    _root = root
     root.title("TCG Organizer")
     icon_path = Path(__file__).resolve().parent / "assets" / "logo.png"
     if icon_path.exists():
