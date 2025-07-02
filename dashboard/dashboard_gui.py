@@ -151,7 +151,7 @@ class Dashboard(ctk.CTk):
         super().__init__()
         self.title("SmartScan Dashboard")
         init_tk_theme(self)
-        self.configure(bg="#f4f4f7")
+        self.configure(bg="#222222")
 
         DashboardFrame(self, show_sidebar=True).pack(fill="both", expand=True)
 

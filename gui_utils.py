@@ -9,8 +9,8 @@ import customtkinter as ctk
 import sv_ttk
 
 
-TITLE_FONT = ("Segoe UI", 18, "bold")
-FOOTER_FONT = ("Segoe UI", 8)
+TITLE_FONT = ("Arial", 18, "bold")
+FOOTER_FONT = ("Arial", 8)
 
 def init_tk_theme(win: tk.Misc) -> None:
     """Apply common window settings and default themes."""
@@ -23,7 +23,7 @@ def init_tk_theme(win: tk.Misc) -> None:
     else:
         sv_ttk.set_theme("dark")
         style = ttk.Style(win)
-    style.configure("TLabel", font=("Segoe UI", 10))
+    style.configure("TLabel", font=("Arial", 10))
 
 
 
