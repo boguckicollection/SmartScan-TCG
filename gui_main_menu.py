@@ -24,6 +24,13 @@ def show_main_menu() -> None:
     ttk.Label(_content, text="Wybierz tryb pracy", font=("Segoe UI", 11)).pack(pady=(0, 20))
     ttk.Button(
         _content,
+        text="0. Dashboard",
+        command=start_dashboard,
+        style="Accent.TButton",
+        width=28,
+    ).pack(pady=10)
+    ttk.Button(
+        _content,
         text="1. Skanowanie kart",
         command=start_scan,
         style="Accent.TButton",
@@ -43,6 +50,12 @@ def show_main_menu() -> None:
         style="Accent.TButton",
         width=28,
     ).pack(pady=10)
+
+
+def start_dashboard() -> None:
+    """Launch the dashboard window."""
+    import dashboard.dashboard_gui as dashboard_gui
+    dashboard_gui.run()
 
 
 def start_scan() -> None:
