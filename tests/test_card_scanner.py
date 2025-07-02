@@ -135,7 +135,7 @@ def test_scan_image_api_override(tmp_path, monkeypatch):
     monkeypatch.setattr(card_scanner, "extract_text", lambda *args, **kw: "Name\n1/102")
     monkeypatch.setattr(card_scanner, "enhance_for_ocr", lambda img: img)
 
-    def fake_api(name, number, set_name=None):
+    def fake_api(name, number, set_name=None, lang="en"):
         return {"Name": "Exact Name", "Number": "1/102", "Set": "Base"}
 
     monkeypatch.setattr(card_scanner, "query_tcg_api", fake_api)
@@ -157,7 +157,7 @@ def test_scan_image_promo_number(tmp_path, monkeypatch):
 
     captured = {}
 
-    def fake_query_card(card_id):
+    def fake_query_card(card_id, lang="en"):
         captured["id"] = card_id
         return {"Name": "Promo", "Number": "SVP EN 126", "Set": "svpromos"}
 
@@ -190,7 +190,7 @@ def test_lookup_with_number_and_set(tmp_path, monkeypatch):
 
     api_calls = []
 
-    def fake_api(name, number, set_name=None):
+    def fake_api(name, number, set_name=None, lang="en"):
         api_calls.append({"name": name, "number": number, "set": set_name})
         if len(api_calls) == 1:
             return None
