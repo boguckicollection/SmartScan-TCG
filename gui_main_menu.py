@@ -5,6 +5,8 @@ from PIL import Image, ImageTk
 from scanner import card_scanner
 import sv_ttk
 
+_scale: float = 1.0
+
 _root: tk.Tk | None = None
 _sidebar: ttk.Frame | None = None
 _content: ttk.Frame | None = None
@@ -189,7 +191,7 @@ def start_viewer() -> None:
         return
     frame = ttk.Frame(_content)
     frame.pack(fill="both", expand=True)
-    viewer_gui.run(str(csv_path), master=frame)
+    viewer_gui.run(str(csv_path), master=frame, page_size=50)
     ttk.Button(frame, text="Powrót", command=start_dashboard).pack(pady=10)
 
 
@@ -230,7 +232,7 @@ def start_sales():
 
 
 def main():
-    global _root, _sidebar, _content
+    global _root, _sidebar, _content, _scale
     root = tk.Tk()
     _root = root
     root.title("TCG Organizer")
@@ -239,6 +241,7 @@ def main():
         root.iconphoto(False, tk.PhotoImage(file=icon_path))
     root.geometry("900x600")
     root.resizable(True, True)
+    root.tk.call("tk", "scaling", _scale)
 
     # Styl "Sun Valley" (sv-ttk) przypominający Windows 11
     style = ttk.Style(root)
@@ -265,6 +268,29 @@ def main():
 
     _content = ttk.Frame(body)
     _content.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
+    scale_frame = ttk.Frame(root)
+    scale_frame.pack(side="bottom", pady=(0, 5))
+    ttk.Label(scale_frame, text="Skalowanie:").pack(side="left", padx=(0, 5))
+    scale_var = tk.StringVar(value=str(_scale))
+
+    def _on_scale(event: tk.Event | None = None) -> None:
+        global _scale
+        try:
+            _scale = float(scale_var.get())
+        except Exception:
+            return
+        root.tk.call("tk", "scaling", _scale)
+
+    cmb = ttk.Combobox(
+        scale_frame,
+        textvariable=scale_var,
+        values=["0.8", "1.0", "1.2", "1.5"],
+        width=5,
+        state="readonly",
+    )
+    cmb.bind("<<ComboboxSelected>>", _on_scale)
+    cmb.pack(side="left")
 
     ttk.Label(root, text="power by boguckicollection", font=("Segoe UI", 8)).pack(side="bottom", pady=10)
 
