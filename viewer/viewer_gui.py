@@ -9,7 +9,11 @@ from PIL import Image, ImageTk
 import pandas as pd
 
 
-def run(csv_path: str, master: tk.Misc | None = None, images_dir: str = "assets/scans") -> None:
+def run(
+    csv_path: str,
+    master: tk.Misc | None = None,
+    images_dir: str = "assets/scans",
+) -> tk.Widget | None:
     """Display card thumbnails loaded from ``csv_path``.
 
     Parameters
@@ -17,17 +21,28 @@ def run(csv_path: str, master: tk.Misc | None = None, images_dir: str = "assets/
     csv_path: str
         Path to CSV file with card information.
     master: tk.Misc, optional
-        Parent window. When ``None`` a new root ``Tk`` is created.
+        Parent widget. When ``None`` a new root ``Tk`` is created.
     images_dir: str
         Directory containing card scans named ``img0001.jpg`` etc.
+
+    Returns
+    -------
+    tk.Widget | None
+        Created container widget when ``master`` is provided. ``None`` when a
+        new root is created and ``mainloop`` is started internally.
     """
     df = pd.read_csv(csv_path)
 
-    win = tk.Toplevel(master) if master else tk.Tk()
-    win.title("Collection Viewer")
+    if master is None:
+        win = tk.Tk()
+        container: tk.Widget = win
+        win.title("Collection Viewer")
+    else:
+        container = ttk.Frame(master)
+        container.pack(fill="both", expand=True)
 
-    canvas = tk.Canvas(win)
-    scrollbar = ttk.Scrollbar(win, orient="vertical", command=canvas.yview)
+    canvas = tk.Canvas(container)
+    scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
     scroll_frame = ttk.Frame(canvas)
     scroll_frame.bind(
         "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
@@ -40,7 +55,7 @@ def run(csv_path: str, master: tk.Misc | None = None, images_dir: str = "assets/
     images: list[ImageTk.PhotoImage] = []
 
     def open_detail(idx: int) -> None:
-        detail = tk.Toplevel(win)
+        detail = tk.Toplevel(container)
         detail.title(df.at[idx, "Name"] if "Name" in df.columns else "Card")
 
         img_path = Path(images_dir) / f"img{idx+1:04d}.jpg"
@@ -80,7 +95,16 @@ def run(csv_path: str, master: tk.Misc | None = None, images_dir: str = "assets/
         photo = ImageTk.PhotoImage(img)
         images.append(photo)
         text = row.get("Name", f"Card {i+1}")
-        btn = ttk.Button(scroll_frame, image=photo, text=text, compound="top", command=lambda idx=i: open_detail(idx))
+        btn = ttk.Button(
+            scroll_frame,
+            image=photo,
+            text=text,
+            compound="top",
+            command=lambda idx=i: open_detail(idx),
+        )
         btn.grid(row=i // 5, column=i % 5, padx=5, pady=5)
 
-    win.mainloop()
+    if master is None:
+        container.mainloop()
+        return None
+    return container
