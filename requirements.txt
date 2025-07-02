@@ -19,3 +19,6 @@ sv-ttk
 
 # (opcjonalnie) klasyfikacja obrazu
 scikit-learn
+# Deep learning for card classifier
+torch
+torchvision
