@@ -13,8 +13,8 @@ pandas
 # API (Shoper)
 requests
 
-# (opcjonalne) styl Azure do tkintera
-azure-ttk-theme @ git+https://github.com/rdbende/ttk-widget-factory.git
+# (opcjonalne) styl Sun Valley dla Tkintera
+sv-ttk
 
 # (opcjonalnie) klasyfikacja obrazu
 scikit-learn

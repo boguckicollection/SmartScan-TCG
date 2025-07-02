@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageTk
 from scanner import card_scanner
+import sv_ttk
 
 
 def start_scan():
@@ -89,10 +90,9 @@ def main():
     root.geometry("400x480")
     root.resizable(False, False)
 
-    # Styl minimalistyczny (Windows 11 look)
+    # Styl "Sun Valley" (sv-ttk) przypominający Windows 11
     style = ttk.Style(root)
-    root.tk.call("source", "assets/config/azure.tcl")
-    style.theme_use("azure-light")  # albo "azure-dark"
+    sv_ttk.set_theme("light")
 
     logo_path = Path(__file__).resolve().parent / "assets" / "logo.png"
     if logo_path.exists():
