@@ -8,6 +8,8 @@ from tkinter import filedialog, ttk
 from PIL import Image, ImageTk
 import pandas as pd
 
+from . import dataset_builder
+
 DEFAULT_PATH = Path(__file__).resolve().parent / "dataset.csv"
 DEFAULT_COLUMNS = ["image_path", "card_id", "set", "holo", "reverse"]
 
@@ -107,9 +109,27 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             tree.insert("", "end", iid=str(len(df) - 1), values=list(df.loc[len(df) - 1]))
         save_df()
 
+    def scan_images() -> None:
+        paths = filedialog.askopenfilenames(
+            title="Wybierz obrazy do skanowania",
+            filetypes=[("Image files", "*.jpg *.png")],
+        )
+        if not paths:
+            return
+        for p in paths:
+            try:
+                row = dataset_builder.label_image(Path(p))
+            except Exception:
+                row = {c: "" for c in df.columns}
+                row["image_path"] = p
+            df.loc[len(df)] = [row.get(c, "") for c in df.columns]
+            tree.insert("", "end", iid=str(len(df) - 1), values=list(df.loc[len(df) - 1]))
+        save_df()
+
     btn_frame = ttk.Frame(container)
     btn_frame.pack(pady=5)
     ttk.Button(btn_frame, text="Dodaj skany", command=add_scans).pack(side="left")
+    ttk.Button(btn_frame, text="Skanuj karty", command=scan_images).pack(side="left", padx=5)
 
     if master is None:
         container.mainloop()
