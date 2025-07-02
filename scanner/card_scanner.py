@@ -46,15 +46,18 @@ FORBIDDEN_WORDS = [
     "basic",
     "evolves from",
     "stage1",
+    "stage 1",
     "stage2",
+    "stage 2",
     "stage3",
+    "stage 3",
 ]
 
 SUFFIXES = ["V", "EX", "VMAX", "VSTAR", "GX"]
 
 # OCR configuration strings
 NAME_OCR_CONFIG = (
-    "--psm 6 -c tessedit_char_whitelist="
+    "--psm 7 -c tessedit_char_whitelist="
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'VEXSTAR0123456789"
 )
 NUMBER_OCR_CONFIG = "--psm 6 -c tessedit_char_whitelist=/0123456789"
@@ -79,16 +82,21 @@ def is_valid_name_line(line: str) -> bool:
     l = line.lower()
     if any(w in l for w in FORBIDDEN_WORDS):
         return False
+    if any(ch.isdigit() for ch in l):
+        return False
     return len(line.strip()) >= 3
 
 
 def extract_card_name(lines: list[str]) -> str:
-    """Return the first valid card name from OCR lines."""
+    """Return the most likely card name from OCR lines."""
+    best = ""
     for line in lines:
         if not is_valid_name_line(line):
             continue
-        return clean_card_name(line)
-    return "Unknown"
+        cleaned = clean_card_name(line)
+        if len(cleaned) > len(best):
+            best = cleaned
+    return best or "Unknown"
 
 
 def clean_number(text: str) -> str:
@@ -430,7 +438,7 @@ def scan_image(path: Path) -> dict:
     if name_crop:
         name_crop = enhance_for_ocr(name_crop)
         name_text = extract_text(name_crop, config=NAME_OCR_CONFIG)
-        cleaned_name = clean_card_name(name_text)
+        cleaned_name = extract_card_name(name_text.splitlines())
 
     # Number region - lower left corner
     number_bbox = (
