@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from collections import defaultdict
+from collections.abc import Callable
 import re
 import sys
 
@@ -294,11 +295,25 @@ def scan_directory(dir_path: Path) -> list:
     return results
 
 
-def scan_files(files: list[Path]) -> list:
-    """Scan a list of image paths."""
+def scan_files(
+    files: list[Path],
+    progress_callback: Callable[[int, int], None] | None = None,
+) -> list:
+    """Scan a list of image paths.
+
+    Parameters
+    ----------
+    files : list[Path]
+        Images to process.
+    progress_callback : callable, optional
+        Function called with the current index and total after each file.
+    """
     results = []
-    for img_path in files:
+    total = len(files)
+    for idx, img_path in enumerate(files, 1):
         results.append(scan_image(img_path))
+        if progress_callback:
+            progress_callback(idx, total)
     return results
 
 
