@@ -56,3 +56,26 @@ to work correctly. If you are on Windows, download the installer from
 add the installation directory (e.g. `C:\\Program Files\\Tesseract-OCR`) to
 your `PATH`. Alternatively set the `TESSERACT_CMD` environment variable to the
 full path of `tesseract.exe`.
+
+## Pretrained models
+
+Scanning cards also requires two PyTorch models located inside the
+`scanner/` directory:
+
+- `card_model.pt` &ndash; predicts the card identifier
+- `type_model.pt` &ndash; detects whether the scan is a holo, reverse or
+  common card
+
+Download the pretrained weights from the project's releases page and place the
+files directly in the `scanner/` folder. If downloads are unavailable you can
+train the models yourself:
+
+1. Run `scanner.dataset_builder.build_dataset` on a directory of labeled card
+   scans to create `dataset.csv`.
+2. Use `scanner.image_analyzer.train_type_classifier` to produce
+   `type_model.pt` from this dataset.
+3. Train `scanner.classifier.CardClassifier` with your own labeled images to
+   generate `card_model.pt`.
+
+Without these files the scanning GUI will raise **"Card classifier model not
+found"** when it tries to load the models.
