@@ -9,6 +9,7 @@ pytesseract
 
 # Praca z danymi
 pandas
+matplotlib
 
 # API (Shoper)
 requests
