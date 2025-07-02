@@ -10,6 +10,7 @@ from tkinter import ttk
 import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from gui_utils import init_tk_theme, TITLE_FONT
 
 DATA_FILE = Path("data/main.csv")
 
@@ -27,7 +28,7 @@ class DashboardFrame(ttk.Frame):
             ttk.Label(
                 self._sidebar,
                 text="SmartScan TCG",
-                font=("Poppins", 16, "bold"),
+                font=TITLE_FONT,
                 padding=10,
             ).pack()
             for name in [
@@ -80,7 +81,7 @@ class DashboardFrame(ttk.Frame):
         ):
             frame = ttk.Frame(self._stats_frame, padding=10, relief="ridge")
             frame.grid(row=0, column=i, padx=5, pady=5, sticky="nsew")
-            ttk.Label(frame, text=str(value), font=("Poppins", 16, "bold")).pack()
+            ttk.Label(frame, text=str(value), font=TITLE_FONT).pack()
             ttk.Label(frame, text=label).pack()
         for i in range(4):
             self._stats_frame.columnconfigure(i, weight=1)
@@ -148,7 +149,7 @@ class Dashboard(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("SmartScan Dashboard")
-        self.geometry("900x600")
+        init_tk_theme(self)
         self.configure(bg="#f4f4f7")
 
         DashboardFrame(self, show_sidebar=True).pack(fill="both", expand=True)

@@ -8,6 +8,7 @@ from tkinter import filedialog, ttk
 from PIL import Image, ImageTk
 import pandas as pd
 from .set_mapping import SET_MAP
+from gui_utils import init_tk_theme
 
 from . import dataset_builder
 
@@ -46,6 +47,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         win = tk.Tk()
         container: tk.Widget = win
         win.title("Training Data Editor")
+        init_tk_theme(win)
     else:
         container = ttk.Frame(master)
         container.pack(fill="both", expand=True)

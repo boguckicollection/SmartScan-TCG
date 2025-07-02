@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
 import pandas as pd
+from gui_utils import init_tk_theme
 
 from scanner.set_mapping import SET_MAP
 
@@ -44,6 +45,7 @@ def run(
         win = tk.Tk()
         container: tk.Widget = win
         win.title("Collection Viewer")
+        init_tk_theme(win)
     else:
         container = ttk.Frame(master)
         container.pack(fill="both", expand=True)
