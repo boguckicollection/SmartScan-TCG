@@ -17,26 +17,28 @@ DATA_FILE = Path("data/cards_batch_0001.csv")
 class DashboardFrame(ttk.Frame):
     """Dashboard view that can be embedded in another window."""
 
-    def __init__(self, master: tk.Misc) -> None:
+    def __init__(self, master: tk.Misc, show_sidebar: bool = True) -> None:
         super().__init__(master)
 
-        self._sidebar = ttk.Frame(self)
-        self._sidebar.pack(side="left", fill="y", padx=0, pady=0)
-        ttk.Label(
-            self._sidebar,
-            text="SmartScan TCG",
-            font=("Poppins", 16, "bold"),
-            padding=10,
-        ).pack()
-        for name in [
-            "Dashboard",
-            "Kolekcja",
-            "Skanowanie",
-            "Sprzedaż",
-            "Statystyki",
-            "Ustawienia",
-        ]:
-            ttk.Button(self._sidebar, text=name, width=20).pack(pady=2, padx=5)
+        self._sidebar: ttk.Frame | None = None
+        if show_sidebar:
+            self._sidebar = ttk.Frame(self)
+            self._sidebar.pack(side="left", fill="y", padx=0, pady=0)
+            ttk.Label(
+                self._sidebar,
+                text="SmartScan TCG",
+                font=("Poppins", 16, "bold"),
+                padding=10,
+            ).pack()
+            for name in [
+                "Dashboard",
+                "Kolekcja",
+                "Skanowanie",
+                "Sprzedaż",
+                "Statystyki",
+                "Ustawienia",
+            ]:
+                ttk.Button(self._sidebar, text=name, width=20).pack(pady=2, padx=5)
 
         self._content = ttk.Frame(self)
         self._content.pack(side="left", fill="both", expand=True, padx=10, pady=10)
@@ -134,7 +136,7 @@ class Dashboard(tk.Tk):
         self.geometry("900x600")
         self.configure(bg="#f4f4f7")
 
-        DashboardFrame(self).pack(fill="both", expand=True)
+        DashboardFrame(self, show_sidebar=True).pack(fill="both", expand=True)
 
 
 def run() -> None:
