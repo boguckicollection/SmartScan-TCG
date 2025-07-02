@@ -15,6 +15,7 @@ def run(
     csv_path: str,
     master: tk.Misc | None = None,
     images_dir: str = "assets/scans",
+    page_size: int = 50,
 ) -> tk.Widget | None:
     """Display card list loaded from ``csv_path``.
 
@@ -26,6 +27,8 @@ def run(
         Parent widget. When ``None`` a new root ``Tk`` is created.
     images_dir : str
         Directory containing card scans named ``img0001.jpg`` etc.
+    page_size : int
+        Number of rows displayed on one page of the viewer.
 
     Returns
     -------
@@ -49,9 +52,39 @@ def run(
     for col in df.columns:
         tree.heading(col, text=col)
         tree.column(col, width=120)
-    for i, row in df.iterrows():
-        tree.insert("", "end", iid=str(i), values=list(row))
+
+    current_page = 0
+    total_pages = max(1, (len(df) + page_size - 1) // page_size)
+
+    def show_page(page: int) -> None:
+        nonlocal current_page
+        current_page = page
+        tree.delete(*tree.get_children())
+        start = page * page_size
+        end = start + page_size
+        for i, row in df.iloc[start:end].iterrows():
+            tree.insert("", "end", iid=str(i), values=list(row))
+        page_var.set(f"{current_page + 1} / {total_pages}")
+
     tree.pack(fill="both", expand=True)
+
+    nav = ttk.Frame(container)
+    nav.pack(pady=5)
+    page_var = tk.StringVar()
+
+    def prev_page() -> None:
+        if current_page > 0:
+            show_page(current_page - 1)
+
+    def next_page() -> None:
+        if current_page < total_pages - 1:
+            show_page(current_page + 1)
+
+    ttk.Button(nav, text="<", command=prev_page).pack(side="left")
+    ttk.Label(nav, textvariable=page_var).pack(side="left", padx=5)
+    ttk.Button(nav, text=">", command=next_page).pack(side="left")
+
+    show_page(0)
 
     images: list[ImageTk.PhotoImage] = []
 

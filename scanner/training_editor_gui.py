@@ -88,15 +88,23 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             var = tk.StringVar(value=str(df.at[idx, col]))
             if col == "set" and SET_MAP:
                 values = sorted(SET_MAP.keys())
-                ttk.Combobox(frm, textvariable=var, values=values, state="readonly").pack(
-                    side="left", fill="x", expand=True
-                )
+                ttk.Combobox(
+                    frm,
+                    textvariable=var,
+                    values=values,
+                    state="readonly",
+                    width=30,
+                ).pack(side="left")
             elif col in {"holo", "reverse"}:
-                ttk.Combobox(frm, textvariable=var, values=["True", "False"], state="readonly").pack(
-                    side="left", fill="x", expand=True
-                )
+                ttk.Combobox(
+                    frm,
+                    textvariable=var,
+                    values=["True", "False"],
+                    state="readonly",
+                    width=30,
+                ).pack(side="left")
             else:
-                ttk.Entry(frm, textvariable=var, width=30).pack(side="left", fill="x", expand=True)
+                ttk.Entry(frm, textvariable=var, width=30).pack(side="left")
             vars[col] = var
 
         def close() -> None:

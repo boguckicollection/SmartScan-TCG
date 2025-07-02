@@ -87,8 +87,9 @@ class DashboardFrame(ttk.Frame):
 
     # --- Charts ------------------------------------------------------------
     def create_charts(self) -> None:
-        line_fig = Figure(figsize=(4, 3), dpi=100)
-        ax = line_fig.add_subplot(111)
+        bg = self.cget("background")
+        line_fig = Figure(figsize=(4, 3), dpi=100, facecolor=bg)
+        ax = line_fig.add_subplot(111, facecolor=bg)
         if "Date" in self.df.columns:
             counts = self.df.groupby("Date").size().sort_index()
             ax.plot(counts.index, counts.values, marker="o")
@@ -99,18 +100,20 @@ class DashboardFrame(ttk.Frame):
         ax.set_title("Liczba kart vs czas")
         ax.set_xlabel("Dzień")
         ax.set_ylabel("Ilość")
+        line_fig.tight_layout()
         canvas = FigureCanvasTkAgg(line_fig, master=self._charts_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(side="left", fill="both", expand=True)
 
-        pie_fig = Figure(figsize=(4, 3), dpi=100)
-        ax2 = pie_fig.add_subplot(111)
+        pie_fig = Figure(figsize=(4, 3), dpi=100, facecolor=bg)
+        ax2 = pie_fig.add_subplot(111, facecolor=bg)
         if "Rarity" in self.df.columns and not self.df.empty:
             counts = self.df["Rarity"].value_counts()
             ax2.pie(counts.values, labels=counts.index, autopct="%1.0f%%")
         else:
             ax2.pie([1], labels=["Brak danych"])
         ax2.set_title("Typy kart")
+        pie_fig.tight_layout()
         canvas2 = FigureCanvasTkAgg(pie_fig, master=self._charts_frame)
         canvas2.draw()
         canvas2.get_tk_widget().pack(side="left", fill="both", expand=True)
