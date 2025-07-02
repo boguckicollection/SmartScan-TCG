@@ -1,6 +1,7 @@
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+import customtkinter as ctk
 from PIL import Image, ImageTk
 from scanner import card_scanner
 from gui_utils import (
@@ -12,9 +13,9 @@ from gui_utils import (
 
 _scale: float = 1.0
 
-_root: tk.Tk | None = None
-_sidebar: ttk.Frame | None = None
-_content: ttk.Frame | None = None
+_root: ctk.CTk | None = None
+_sidebar: ctk.CTkFrame | None = None
+_content: ctk.CTkFrame | None = None
 
 
 def clear_content() -> None:
@@ -30,41 +31,41 @@ def build_sidebar() -> None:
         return
     for widget in _sidebar.winfo_children():
         widget.destroy()
-    ttk.Button(
+    ctk.CTkButton(
         _sidebar,
         text="Dashboard",
         command=start_dashboard,
-        width=18,
+        width=140,
     ).pack(pady=2, fill="x")
-    ttk.Button(
+    ctk.CTkButton(
         _sidebar,
         text="Skanowanie kart",
         command=start_scan,
-        width=18,
+        width=140,
     ).pack(pady=2, fill="x")
-    ttk.Button(
+    ctk.CTkButton(
         _sidebar,
         text="Przeglądanie kolekcji",
         command=start_viewer,
-        width=18,
+        width=140,
     ).pack(pady=2, fill="x")
-    ttk.Button(
+    ctk.CTkButton(
         _sidebar,
         text="Edycja treningu",
         command=start_training_editor,
-        width=18,
+        width=140,
     ).pack(pady=2, fill="x")
-    ttk.Button(
+    ctk.CTkButton(
         _sidebar,
         text="Scal CSV",
         command=merge_csv_dialog,
-        width=18,
+        width=140,
     ).pack(pady=2, fill="x")
-    ttk.Button(
+    ctk.CTkButton(
         _sidebar,
         text="Analiza sprzedaży",
         command=start_sales,
-        width=18,
+        width=140,
     ).pack(pady=2, fill="x")
 
 
@@ -92,10 +93,10 @@ def show_scan_progress(paths: list[Path]) -> None:
     if _content is None:
         return
 
-    frame = ttk.Frame(_content)
+    frame = ctk.CTkFrame(_content, fg_color="#222222")
     frame.pack(pady=20)
 
-    ttk.Label(frame, text="Skanowanie kart...").pack(padx=20, pady=(0, 5))
+    ctk.CTkLabel(frame, text="Skanowanie kart...").pack(padx=20, pady=(0, 5))
 
     scans_dir = Path(__file__).resolve().parent / "assets" / "scans"
     card_paths = sorted(scans_dir.glob("*.jpg"))[:10]
@@ -128,10 +129,10 @@ def show_scan_progress(paths: list[Path]) -> None:
     progress_var = tk.DoubleVar(value=0)
     progress = ttk.Progressbar(frame, variable=progress_var, maximum=len(paths), length=300)
     progress.pack(padx=20, pady=10)
-    status = ttk.Label(frame, text=f"0 / {len(paths)}")
+    status = ctk.CTkLabel(frame, text=f"0 / {len(paths)}")
     status.pack(pady=(0, 10))
 
-    back_btn = ttk.Button(frame, text="Powrót", command=start_dashboard, state="disabled")
+    back_btn = ctk.CTkButton(frame, text="Powrót", command=start_dashboard, state="disabled")
     back_btn.pack(pady=(10, 0))
 
     def update_progress(current: int, total: int) -> None:
@@ -151,7 +152,7 @@ def show_scan_results(data: list[dict]) -> None:
         return
 
     clear_content()
-    frame = ttk.Frame(_content)
+    frame = ctk.CTkFrame(_content, fg_color="#222222")
     frame.pack(fill="both", expand=True)
 
     columns = ["CardID", "Name", "Number", "Set", "Type"]
@@ -178,10 +179,10 @@ def show_scan_results(data: list[dict]) -> None:
                 f"Zapisano {len(data)} rekordów do {save_path}"
             )
 
-    btns = ttk.Frame(frame)
+    btns = ctk.CTkFrame(frame, fg_color="transparent")
     btns.pack(pady=10)
-    ttk.Button(btns, text="Zapisz do CSV", command=save).pack(side="left", padx=5)
-    ttk.Button(btns, text="Powrót", command=start_dashboard).pack(side="left", padx=5)
+    ctk.CTkButton(btns, text="Zapisz do CSV", command=save).pack(side="left", padx=5)
+    ctk.CTkButton(btns, text="Powrót", command=start_dashboard).pack(side="left", padx=5)
 
 
 def start_viewer() -> None:
@@ -194,10 +195,10 @@ def start_viewer() -> None:
     clear_content()
     if _content is None:
         return
-    frame = ttk.Frame(_content)
+    frame = ctk.CTkFrame(_content, fg_color="#222222")
     frame.pack(fill="both", expand=True)
     viewer_gui.run(str(csv_path), master=frame, page_size=50)
-    ttk.Button(frame, text="Powrót", command=start_dashboard).pack(pady=10)
+    ctk.CTkButton(frame, text="Powrót", command=start_dashboard).pack(pady=10)
 
 
 def start_training_editor() -> None:
@@ -207,10 +208,10 @@ def start_training_editor() -> None:
     if _content is None:
         return
     import scanner.training_editor_gui as teg
-    frame = ttk.Frame(_content)
+    frame = ctk.CTkFrame(_content, fg_color="#222222")
     frame.pack(fill="both", expand=True)
     teg.run(str(csv_path), master=frame)
-    ttk.Button(frame, text="Powrót", command=start_dashboard).pack(pady=10)
+    ctk.CTkButton(frame, text="Powrót", command=start_dashboard).pack(pady=10)
 
 
 def merge_csv_dialog() -> None:
@@ -238,7 +239,7 @@ def start_sales():
 
 def main():
     global _root, _sidebar, _content, _scale
-    root = tk.Tk()
+    root = ctk.CTk()
     _root = root
     root.title("TCG Organizer")
     icon_path = Path(__file__).resolve().parent / "assets" / "logo.png"
@@ -246,31 +247,41 @@ def main():
     root.tk.call("tk", "scaling", _scale)
     init_tk_theme(root)
 
+    bg_path = Path(__file__).resolve().parent / "assets" / "backgroung.png"
+    if bg_path.exists():
+        bg_img = Image.open(bg_path)
+        bg_img = bg_img.resize((900, 600))
+        bg_photo = ctk.CTkImage(bg_img)
+        bg_label = ctk.CTkLabel(root, image=bg_photo, text="")
+        bg_label.place(relx=0.5, rely=0.5, relwidth=1, relheight=1, anchor="center")
+        bg_label.lower()
+        root.bg_photo = bg_photo
+
     logo_path = Path(__file__).resolve().parent / "assets" / "logo.png"
     if logo_path.exists():
         img = Image.open(logo_path)
         img.thumbnail((48, 48))
-        logo_img = ImageTk.PhotoImage(img)
-        header = ttk.Frame(root)
+        logo_img = ctk.CTkImage(img)
+        header = ctk.CTkFrame(root, fg_color="transparent")
         header.pack(pady=(20, 10))
-        ttk.Label(header, image=logo_img).pack(side="left", padx=(0, 10))
-        ttk.Label(header, text="TCG Organizer", font=TITLE_FONT).pack(side="left")
+        ctk.CTkLabel(header, image=logo_img, text="").pack(side="left", padx=(0, 10))
+        ctk.CTkLabel(header, text="TCG Organizer", font=TITLE_FONT).pack(side="left")
         root.logo_img = logo_img
     else:
-        ttk.Label(root, text="TCG Organizer", font=TITLE_FONT).pack(pady=(20, 10))
+        ctk.CTkLabel(root, text="TCG Organizer", font=TITLE_FONT).pack(pady=(20, 10))
 
-    body = ttk.Frame(root)
+    body = ctk.CTkFrame(root, fg_color="#222222")
     body.pack(fill="both", expand=True)
 
-    _sidebar = ttk.Frame(body)
+    _sidebar = ctk.CTkFrame(body, fg_color="#333333", width=150)
     _sidebar.pack(side="left", fill="y", padx=10, pady=10)
 
-    _content = ttk.Frame(body)
+    _content = ctk.CTkFrame(body, fg_color="#222222")
     _content.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
-    scale_frame = ttk.Frame(root)
+    scale_frame = ctk.CTkFrame(root, fg_color="transparent")
     scale_frame.pack(side="bottom", pady=(0, 5))
-    ttk.Label(scale_frame, text="Skalowanie:").pack(side="left", padx=(0, 5))
+    ctk.CTkLabel(scale_frame, text="Skalowanie:").pack(side="left", padx=(0, 5))
     scale_var = tk.StringVar(value=str(_scale))
 
     def _on_scale(event: tk.Event | None = None) -> None:
@@ -281,17 +292,15 @@ def main():
             return
         root.tk.call("tk", "scaling", _scale)
 
-    cmb = ttk.Combobox(
+    cmb = ctk.CTkOptionMenu(
         scale_frame,
-        textvariable=scale_var,
+        variable=scale_var,
         values=["0.8", "1.0", "1.2", "1.5"],
-        width=5,
-        state="readonly",
+        command=lambda v: _on_scale(),
     )
-    cmb.bind("<<ComboboxSelected>>", _on_scale)
     cmb.pack(side="left")
 
-    ttk.Label(root, text="power by boguckicollection", font=FOOTER_FONT).pack(side="bottom", pady=10)
+    ctk.CTkLabel(root, text="power by boguckicollection", font=FOOTER_FONT).pack(side="bottom", pady=10)
 
     build_sidebar()
     start_dashboard()
