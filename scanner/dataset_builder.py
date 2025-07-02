@@ -26,10 +26,12 @@ def label_image(path: Path) -> Dict[str, object]:
 
     set_name = card_data.get("Set", "Unknown")
     number = card_data.get("Number", "")
+    name = card_data.get("Name", "Unknown")
     card_id = f"{set_name}-{number}" if set_name and number else ""
 
     return {
         "image_path": str(path),
+        "name": name,
         "card_id": card_id,
         "set": set_name,
         "holo": bool(image_data.get("holo")),
@@ -49,7 +51,8 @@ def build_dataset(scan_dir: str | Path, csv_path: str | Path | None = None) -> L
 
     with out.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(
-            fh, fieldnames=["image_path", "card_id", "set", "holo", "reverse"]
+            fh,
+            fieldnames=["image_path", "name", "card_id", "set", "holo", "reverse"],
         )
         writer.writeheader()
         writer.writerows(rows)

@@ -7,11 +7,12 @@ import tkinter as tk
 from tkinter import filedialog, ttk
 from PIL import Image, ImageTk
 import pandas as pd
+from .set_mapping import SET_MAP
 
 from . import dataset_builder
 
 DEFAULT_PATH = Path(__file__).resolve().parent / "dataset.csv"
-DEFAULT_COLUMNS = ["image_path", "card_id", "set", "holo", "reverse"]
+DEFAULT_COLUMNS = ["image_path", "name", "card_id", "set", "holo", "reverse"]
 
 
 def append_images(csv_path: str | Path, image_paths: list[str]) -> pd.DataFrame:
@@ -25,7 +26,7 @@ def append_images(csv_path: str | Path, image_paths: list[str]) -> pd.DataFrame:
     else:
         df = pd.DataFrame(columns=DEFAULT_COLUMNS)
     for p in image_paths:
-        df.loc[len(df)] = [p, "", "", False, False]
+        df.loc[len(df)] = [p, "", "", "", False, False]
     df.to_csv(path, index=False)
     return df
 
@@ -85,7 +86,17 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             frm.pack(fill="x", padx=10, pady=2)
             ttk.Label(frm, text=col, width=12).pack(side="left")
             var = tk.StringVar(value=str(df.at[idx, col]))
-            ttk.Entry(frm, textvariable=var, width=30).pack(side="left", fill="x", expand=True)
+            if col == "set" and SET_MAP:
+                values = sorted(SET_MAP.keys())
+                ttk.Combobox(frm, textvariable=var, values=values, state="readonly").pack(
+                    side="left", fill="x", expand=True
+                )
+            elif col in {"holo", "reverse"}:
+                ttk.Combobox(frm, textvariable=var, values=["True", "False"], state="readonly").pack(
+                    side="left", fill="x", expand=True
+                )
+            else:
+                ttk.Entry(frm, textvariable=var, width=30).pack(side="left", fill="x", expand=True)
             vars[col] = var
 
         def close() -> None:
@@ -111,7 +122,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         if not paths:
             return
         for p in paths:
-            df.loc[len(df)] = [p, "", "", False, False]
+            df.loc[len(df)] = [p, "", "", "", False, False]
             tree.insert("", "end", iid=str(len(df) - 1), values=list(df.loc[len(df) - 1]))
         save_df()
 
