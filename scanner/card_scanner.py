@@ -15,10 +15,18 @@ if __name__ == "__main__" and __package__ is None:
 
 # Use absolute imports so the script can be executed directly
 # or via ``python -m`` without package issues.
-from scanner.ocr_engine import extract_text
-from PIL import Image
 from scanner.data_exporter import export_to_csv
+from scanner.image_analyzer import predict_type
+from scanner.classifier import CardClassifier
+from PIL import Image
 import requests
+
+try:  # optional when torch is not installed
+    import torch
+    from torchvision import transforms
+except Exception:  # pragma: no cover - torch not available during some tests
+    torch = None
+    transforms = None
 
 EXCLUDED_WORDS = {
     "basic",
@@ -409,51 +417,49 @@ def parse_card_text(
     return result
 
 
+CARD_MODEL_PATH = Path(__file__).resolve().parent / "card_model.pt"
+_card_clf: CardClassifier | None = None
+
+
+def predict_card_id(image_path: str, model_path: str | Path = CARD_MODEL_PATH) -> str:
+    """Return predicted card identifier for ``image_path``."""
+    if not torch:
+        raise ImportError("PyTorch is required for prediction")
+    global _card_clf
+    if _card_clf is None:
+        if not Path(model_path).exists():
+            raise RuntimeError("Card classifier model not found")
+        _card_clf = CardClassifier.load(model_path, device="cpu")
+    transform = transforms.Compose([transforms.Resize((64, 64)), transforms.ToTensor()])
+    img = Image.open(image_path).convert("RGB")
+    tensor = transform(img)
+    return _card_clf.predict([tensor])[0]
+
+
 def scan_image(path: Path) -> dict:
-    """Scan a single image and return parsed data."""
-    image = Image.open(path)
-    width, height = image.size
+    """Scan a single image and return predicted data."""
+    card_id = predict_card_id(str(path))
+    try:
+        card_type = predict_type(str(path))
+    except Exception:  # pragma: no cover - prediction may fail in tests
+        card_type = "common"
 
-    # When the image is already a small, cropped fragment (e.g. prepared
-    # name/number snippet) the default bounding boxes cut away most of the
-    # text.  In that case just run OCR on the whole image and parse the
-    # details from the result.
-    if width <= 120 and height <= 120:
-        full_text = extract_text(image, config=NAME_OCR_CONFIG)
-        cleaned_full = clean_card_name(full_text)
-        result = parse_card_text(full_text, full_text, cleaned_full)
-        result["ImagePath"] = str(path)
-        return result
+    api_data = query_card_by_id(card_id)
 
-    # Name region - top portion of the card
-    name_bbox = (
-        0,
-        0,
-        int(width * 0.8),
-        int(height * 0.22),
-    )
-    name_crop = safe_crop(image, name_bbox)
-    name_text = None
-    cleaned_name = None
-    if name_crop:
-        name_crop = enhance_for_ocr(name_crop)
-        name_text = extract_text(name_crop, config=NAME_OCR_CONFIG)
-        cleaned_name = extract_card_name(name_text.splitlines())
-
-    # Number region - lower left corner
-    number_bbox = (
-        int(width * 0.05),
-        int(height * 0.92),
-        int(width * 0.40),
-        int(height * 0.985),
-    )
-    number_crop = safe_crop(image, number_bbox)
-    number_text = (
-        extract_text(number_crop, config=NUMBER_OCR_CONFIG) if number_crop else None
-    )
-
-    result = parse_card_text(name_text, number_text, cleaned_name)
-    result["ImagePath"] = str(path)
+    result = {
+        "Name": "Unknown",
+        "Number": "",
+        "Set": "Unknown",
+        "Type": card_type,
+        "ImagePath": str(path),
+    }
+    if api_data:
+        result.update({k: v for k, v in api_data.items() if v})
+    else:
+        if "-" in card_id:
+            set_id, number = card_id.split("-", 1)
+            result["Set"] = set_id
+            result["Number"] = number
     return result
 
 
