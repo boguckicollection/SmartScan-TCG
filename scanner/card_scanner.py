@@ -158,6 +158,27 @@ def detect_language(text: str | None) -> str:
         return "en"
     return "en"
 
+
+def fix_merged_number(text: str) -> str:
+    """Return ``text`` with typical OCR merge errors corrected."""
+    normalized = text.replace(" ", "")
+    match = re.match(r"(\d{2})(\d{2}/\d{2})", normalized)
+    if match:
+        return f"{match.group(1)} {match.group(2)}"
+    match = re.match(r"(\d)(\d{2}/\d{2})", normalized)
+    if match:
+        return f"0{match.group(1)} {match.group(2)}"
+    return text
+
+
+def extract_promo_card_id(text: str) -> str | None:
+    """Return promo card identifier found in ``text`` if any."""
+    fixed = fix_merged_number(text)
+    match = re.search(r"(\d{2})\s*\d{2}/\d{2}", fixed)
+    if match:
+        return f"ccp-{match.group(1)}"
+    return None
+
 # Regex pattern for extracting ``number/total`` from OCR text.
 NUMBER_TOTAL_REGEX = re.compile(r"(\d{1,3})\/(\d{1,3})")
 
@@ -231,6 +252,9 @@ def query_card_by_id(card_id: str, lang: str = "en") -> dict | None:
         resp = requests.get(url, timeout=5)
         resp.raise_for_status()
         data = resp.json()
+    except requests.HTTPError as e:
+        print(f"[API ID ERROR] {e}")
+        return None
     except Exception:
         return None
 
@@ -295,6 +319,14 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
     lang = detect_language(full_text)
     print(f"[LANG DETECTED] {lang}")
 
+    promo_id = extract_promo_card_id(full_text)
+    api_data = None
+    if promo_id:
+        print(f"[PROMO] Detected promo card ID: {promo_id}, lang: {lang}")
+        print(f"[OCR RAW NUMBER] {number_text}")
+        print(f"[OCR FIXED PROMO ID] {promo_id}")
+        api_data = query_card_by_id(promo_id, lang)
+
     name = "Unknown"
     if name_text:
         lines = [line.strip() for line in name_text.splitlines() if line.strip()]
@@ -313,28 +345,29 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
 
     result = {"Name": name, "Number": number, "Set": set_name or "Unknown"}
 
-    if promo_match:
-        card_id = promo_match.group(1).lower().replace(" ", "-")
-        result["Number"] = promo_match.group(1)
-        result["Set"] = PROMO_SETS.get(promo_match.group(1).split()[0], "Unknown")
-        api_data = query_card_by_id(card_id, lang)
-    elif lang == "zh-hans" and number_text:
-        id_match = re.search(r"(\d{2})\s+\d{2}/\d{2}", number_text)
-        if id_match:
-            card_id = f"ccp-{id_match.group(1)}"
+    if api_data is None:
+        if promo_match:
+            card_id = promo_match.group(1).lower().replace(" ", "-")
+            result["Number"] = promo_match.group(1)
+            result["Set"] = PROMO_SETS.get(promo_match.group(1).split()[0], "Unknown")
             api_data = query_card_by_id(card_id, lang)
+        elif lang == "zh-hans" and number_text:
+            id_match = re.search(r"(\d{2})\s+\d{2}/\d{2}", number_text)
+            if id_match:
+                card_id = f"ccp-{id_match.group(1)}"
+                api_data = query_card_by_id(card_id, lang)
+            else:
+                api_data = query_tcg_api(name, number, lang=lang)
         else:
             api_data = query_tcg_api(name, number, lang=lang)
-    else:
-        api_data = query_tcg_api(name, number, lang=lang)
-        if not api_data and number:
-            print(f"[API fallback] Retrying with only number: {number}")
-            api_data = query_tcg_api(None, number, lang=lang)
-        if not api_data and set_name:
-            api_data = query_tcg_api(None, number, set_name, lang=lang)
-        if not api_data and card_num and total:
-            approx = name if name != "Unknown" else ""
-            api_data = lookup_card_by_number_and_total(card_num, total, approx)
+            if not api_data and number:
+                print(f"[API fallback] Retrying with only number: {number}")
+                api_data = query_tcg_api(None, number, lang=lang)
+            if not api_data and set_name:
+                api_data = query_tcg_api(None, number, set_name, lang=lang)
+            if not api_data and card_num and total:
+                approx = name if name != "Unknown" else ""
+                api_data = lookup_card_by_number_and_total(card_num, total, approx)
 
     if api_data:
         result.update({k: v for k, v in api_data.items() if v})
