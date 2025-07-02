@@ -18,7 +18,10 @@ def append_images(csv_path: str | Path, image_paths: list[str]) -> pd.DataFrame:
     """Append ``image_paths`` as new rows to ``csv_path`` and return the DataFrame."""
     path = Path(csv_path)
     if path.exists():
-        df = pd.read_csv(path)
+        try:
+            df = pd.read_csv(path)
+        except pd.errors.EmptyDataError:
+            df = pd.DataFrame(columns=DEFAULT_COLUMNS)
     else:
         df = pd.DataFrame(columns=DEFAULT_COLUMNS)
     for p in image_paths:
@@ -31,7 +34,10 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
     """Launch the editor for ``csv_path``."""
     path = Path(csv_path)
     if path.exists():
-        df = pd.read_csv(path)
+        try:
+            df = pd.read_csv(path)
+        except pd.errors.EmptyDataError:
+            df = pd.DataFrame(columns=DEFAULT_COLUMNS)
     else:
         df = pd.DataFrame(columns=DEFAULT_COLUMNS)
 
