@@ -60,6 +60,7 @@ def test_scan_image_with_api(tmp_path, monkeypatch):
     assert data["Set"] == "Base"
     assert data["Type"] == "holo"
     assert data["ImagePath"] == str(img)
+    assert data["CardID"] == "base-1/102"
 
 
 def test_scan_image_fallback(tmp_path, monkeypatch):
@@ -76,6 +77,7 @@ def test_scan_image_fallback(tmp_path, monkeypatch):
     assert data["Number"] == "2"
     assert data["Set"] == "base"
     assert data["Type"] == "common"
+    assert data["CardID"] == "base-2"
 
 
 def test_export_to_csv(tmp_path):

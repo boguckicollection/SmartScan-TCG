@@ -447,6 +447,7 @@ def scan_image(path: Path) -> dict:
     api_data = query_card_by_id(card_id)
 
     result = {
+        "CardID": card_id,
         "Name": "Unknown",
         "Number": "",
         "Set": "Unknown",
