@@ -128,19 +128,47 @@ def show_scan_progress(paths: list[Path]) -> None:
 
     data = card_scanner.scan_files(paths, progress_callback=update_progress)
     running = False
-    save_path = filedialog.asksaveasfilename(
-        title="Zapisz dane skanowania",
-        initialdir="data",
-        defaultextension=".csv",
-        filetypes=[("CSV", "*.csv")],
-    )
-    if save_path:
-        card_scanner.export_to_csv(data, save_path)
-        messagebox.showinfo(
-            "Skanowanie zakonczone",
-            f"Zapisano {len(data)} rekordy do {save_path}"
-        )
+    show_scan_results(data)
     back_btn.config(state="normal")
+
+
+def show_scan_results(data: list[dict]) -> None:
+    """Display scanned card information and allow saving to CSV."""
+    if _content is None:
+        return
+
+    clear_content()
+    frame = ttk.Frame(_content)
+    frame.pack(fill="both", expand=True)
+
+    columns = ["CardID", "Name", "Number", "Set", "Type"]
+    tree = ttk.Treeview(frame, columns=columns, show="headings")
+    for col in columns:
+        tree.heading(col, text=col)
+        tree.column(col, width=120)
+    for row in data:
+        values = [row.get(c, "") for c in columns]
+        tree.insert("", "end", values=values)
+    tree.pack(fill="both", expand=True, pady=10)
+
+    def save() -> None:
+        save_path = filedialog.asksaveasfilename(
+            title="Zapisz dane skanowania",
+            initialdir="data",
+            defaultextension=".csv",
+            filetypes=[("CSV", "*.csv")],
+        )
+        if save_path:
+            card_scanner.export_to_csv(data, save_path)
+            messagebox.showinfo(
+                "Skanowanie zakonczone",
+                f"Zapisano {len(data)} rekordy do {save_path}"
+            )
+
+    btns = ttk.Frame(frame)
+    btns.pack(pady=10)
+    ttk.Button(btns, text="Zapisz do CSV", command=save).pack(side="left", padx=5)
+    ttk.Button(btns, text="Powrót", command=start_dashboard).pack(side="left", padx=5)
 
 
 def start_viewer() -> None:
