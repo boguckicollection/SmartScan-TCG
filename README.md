@@ -4,7 +4,7 @@
   <img src="assets/logo.png" alt="TCG Organizer Logo" width="200" />
 </p>
 
-TCG Organizer provides a simple GUI for scanning cards, browsing your collection, and analyzing sales data. The application uses a Tkinter-based interface and relies on optional Azure theme assets located in the `assets/config` directory.
+TCG Organizer provides a simple GUI for scanning cards, browsing your collection, and analyzing sales data. The application uses a Tkinter-based interface styled with the optional `sv-ttk` Sun Valley theme.
 
 ## Running the application
 
