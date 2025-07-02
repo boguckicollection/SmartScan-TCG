@@ -55,7 +55,7 @@ def start_dashboard() -> None:
     if _content is None:
         return
     from dashboard.dashboard_gui import DashboardFrame
-    DashboardFrame(_content).pack(fill="both", expand=True)
+    DashboardFrame(_content, show_sidebar=False).pack(fill="both", expand=True)
 
 
 def start_scan() -> None:
