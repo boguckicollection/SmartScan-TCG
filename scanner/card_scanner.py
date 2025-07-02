@@ -7,6 +7,7 @@ from collections import defaultdict
 from collections.abc import Callable
 import re
 import sys
+from difflib import SequenceMatcher
 
 # Allow running the script directly from the ``scanner`` directory
 if __name__ == "__main__" and __package__ is None:
@@ -95,6 +96,16 @@ def clean_number(text: str) -> str:
     return "Unknown"
 
 
+def extract_number_total(text: str) -> tuple[str | None, str | None]:
+    """Return card number and set total if present in ``text``."""
+    if not text:
+        return None, None
+    match = NUMBER_TOTAL_REGEX.search(text)
+    if not match:
+        return None, None
+    return match.group(1), match.group(2)
+
+
 def enhance_for_ocr(image: Image.Image) -> Image.Image:
     """Improve contrast to help OCR."""
     from PIL import ImageEnhance, ImageFilter
@@ -117,6 +128,8 @@ def safe_crop(image: Image.Image, bbox: tuple[int, int, int, int]):
 
 API_URL = "https://api.tcgdex.net/v2/cards"
 API_CARD_URL = "https://api.tcgdex.net/v2/en/cards"
+SET_LIST_URL = "https://api.tcgdex.net/v2/en/sets"
+CARD_URL_TEMPLATE = "https://api.tcgdex.net/v2/en/cards/{set_id}-{card_number}"
 
 PROMO_REGEX = re.compile(r"\b([A-Z]{2,4}\s?EN?\s?\d{1,4})\b")
 PROMO_SETS = {
@@ -126,6 +139,9 @@ PROMO_SETS = {
     "BW": "bwpromos",
     "XY": "xypromos",
 }
+
+# Regex pattern for extracting ``number/total`` from OCR text.
+NUMBER_TOTAL_REGEX = re.compile(r"(\d{1,3})\/(\d{1,3})")
 
 # Regex pattern for extracting set name from OCR text, e.g. "Set: Base".
 SET_REGEX = re.compile(r"set[:\s]+([A-Za-z0-9 '\-]+)", re.IGNORECASE)
@@ -203,6 +219,49 @@ def query_card_by_id(card_id: str) -> dict | None:
     }
 
 
+def is_similar(a: str, b: str, threshold: float = 0.7) -> bool:
+    """Return ``True`` if two strings are similar enough."""
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio() >= threshold
+
+
+def lookup_card_by_number_and_total(card_number: str, set_total: str, approx_name: str = "") -> dict | None:
+    """Return card details by number and set size with optional fuzzy name."""
+    try:
+        resp = requests.get(SET_LIST_URL, timeout=10)
+        resp.raise_for_status()
+        all_sets = resp.json()
+    except Exception as exc:
+        print(f"[TCGdex] Error loading sets: {exc}")
+        return None
+
+    candidates = [s["id"] for s in all_sets if str(s.get("total")) == str(set_total)]
+    print(f"[DEBUG] Candidate sets for total {set_total}: {candidates}")
+
+    matches: list[dict] = []
+    for set_id in candidates:
+        url = CARD_URL_TEMPLATE.format(set_id=set_id, card_number=card_number)
+        try:
+            card_resp = requests.get(url, timeout=5)
+            if card_resp.status_code == 200:
+                card = card_resp.json()
+                api_name = card.get("name", "")
+                if approx_name and is_similar(approx_name, api_name):
+                    print(f"[MATCH] Found close name match: {api_name} in set {set_id}")
+                    return {"Name": api_name, "Number": card.get("number"), "Set": set_id}
+                matches.append({"Name": api_name, "Number": card.get("number"), "Set": set_id})
+        except Exception as exc:
+            print(f"[WARN] Failed to get card {set_id}-{card_number}: {exc}")
+            continue
+
+    if len(matches) == 1:
+        m = matches[0]
+        print(f"[FALLBACK] Only one possible match: {m['Name']} from {m['Set']}")
+        return m
+
+    print(f"[FAIL] No reliable match for {card_number}/{set_total} with name '{approx_name}'")
+    return None
+
+
 
 
 def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
@@ -215,10 +274,13 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
     number = ""
     promo_match = None
     set_name = None
+    card_num = None
+    total = None
     if number_text:
         number = clean_number(number_text)
         promo_match = PROMO_REGEX.search(number_text)
         set_name = parse_set(number_text)
+        card_num, total = extract_number_total(number_text)
 
     result = {"Name": name, "Number": number, "Set": set_name or "Unknown"}
 
@@ -234,6 +296,9 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
             api_data = query_tcg_api(None, number)
         if not api_data and set_name:
             api_data = query_tcg_api(None, number, set_name)
+        if not api_data and card_num and total:
+            approx = name if name != "Unknown" else ""
+            api_data = lookup_card_by_number_and_total(card_num, total, approx)
 
     if api_data:
         result.update({k: v for k, v in api_data.items() if v})
