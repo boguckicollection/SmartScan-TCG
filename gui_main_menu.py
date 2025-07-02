@@ -13,7 +13,22 @@ def start_scan():
     if not paths:
         return
 
-    data = card_scanner.scan_files([Path(p) for p in paths])
+    progress_win = tk.Toplevel()
+    progress_win.title("Postęp skanowania")
+    ttk.Label(progress_win, text="Skanowanie kart...").pack(padx=20, pady=(20, 10))
+    progress_var = tk.DoubleVar(value=0)
+    progress = ttk.Progressbar(progress_win, variable=progress_var, maximum=len(paths), length=300)
+    progress.pack(padx=20, pady=10)
+    status = ttk.Label(progress_win, text=f"0 / {len(paths)}")
+    status.pack(pady=(0, 20))
+
+    def update_progress(current: int, total: int) -> None:
+        progress_var.set(current)
+        status.config(text=f"{current} / {total}")
+        progress_win.update_idletasks()
+
+    data = card_scanner.scan_files([Path(p) for p in paths], progress_callback=update_progress)
+    progress_win.destroy()
     output = Path("data/cards_scanned.csv")
     card_scanner.export_to_csv(data, str(output))
     messagebox.showinfo(
