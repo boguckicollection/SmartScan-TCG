@@ -1,7 +1,7 @@
-import os
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from PIL import Image, ImageTk
 from scanner import card_scanner
 
 
@@ -15,9 +15,41 @@ def start_scan():
 
     progress_win = tk.Toplevel()
     progress_win.title("Postęp skanowania")
-    ttk.Label(progress_win, text="Skanowanie kart...").pack(padx=20, pady=(20, 10))
+
+    ttk.Label(progress_win, text="Skanowanie kart...").pack(padx=20, pady=(20, 5))
+
+    scans_dir = Path(__file__).resolve().parent / "assets" / "scans"
+    card_paths = sorted(scans_dir.glob("*.jpg"))[:10]
+    images = []
+    for p in card_paths:
+        try:
+            img = Image.open(p)
+            img.thumbnail((150, 210))
+            images.append(ImageTk.PhotoImage(img))
+        except Exception:
+            continue
+
+    img_label = ttk.Label(progress_win)
+    img_label.pack(pady=(5, 10))
+    progress_win.card_images = images
+
+    idx = 0
+    running = True
+
+    def animate() -> None:
+        nonlocal idx
+        if not running or not images:
+            return
+        img_label.configure(image=images[idx])
+        idx = (idx + 1) % len(images)
+        progress_win.after(200, animate)
+
+    animate()
+
     progress_var = tk.DoubleVar(value=0)
-    progress = ttk.Progressbar(progress_win, variable=progress_var, maximum=len(paths), length=300)
+    progress = ttk.Progressbar(
+        progress_win, variable=progress_var, maximum=len(paths), length=300
+    )
     progress.pack(padx=20, pady=10)
     status = ttk.Label(progress_win, text=f"0 / {len(paths)}")
     status.pack(pady=(0, 20))
@@ -25,9 +57,10 @@ def start_scan():
     def update_progress(current: int, total: int) -> None:
         progress_var.set(current)
         status.config(text=f"{current} / {total}")
-        progress_win.update_idletasks()
+        progress_win.update()
 
     data = card_scanner.scan_files([Path(p) for p in paths], progress_callback=update_progress)
+    running = False
     progress_win.destroy()
     output = Path("data/cards_scanned.csv")
     card_scanner.export_to_csv(data, str(output))
@@ -50,10 +83,10 @@ def start_sales():
 def main():
     root = tk.Tk()
     root.title("TCG Organizer")
-    icon_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
-    if os.path.exists(icon_path):
+    icon_path = Path(__file__).resolve().parent / "assets" / "logo.png"
+    if icon_path.exists():
         root.iconphoto(False, tk.PhotoImage(file=icon_path))
-    root.geometry("400x420")
+    root.geometry("400x480")
     root.resizable(False, False)
 
     # Styl minimalistyczny (Windows 11 look)
@@ -61,7 +94,13 @@ def main():
     root.tk.call("source", "assets/config/azure.tcl")
     style.theme_use("azure-light")  # albo "azure-dark"
 
-    ttk.Label(root, text="TCG Organizer", font=("Segoe UI", 18, "bold")).pack(pady=(30, 10))
+    logo_path = Path(__file__).resolve().parent / "assets" / "logo.png"
+    if logo_path.exists():
+        logo_img = tk.PhotoImage(file=logo_path)
+        ttk.Label(root, image=logo_img).pack(pady=(20, 10))
+        root.logo_img = logo_img
+
+    ttk.Label(root, text="TCG Organizer", font=("Segoe UI", 18, "bold")).pack(pady=(0, 10))
     ttk.Label(root, text="Wybierz tryb pracy", font=("Segoe UI", 11)).pack(pady=(0, 20))
 
     # Przycisk: skanowanie
