@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk
+import customtkinter as ctk
 from PIL import Image, ImageTk
 import pandas as pd
 from gui_utils import init_tk_theme
@@ -42,7 +43,7 @@ def run(
         df.sort_values("Set", inplace=True, ignore_index=True)
 
     if master is None:
-        win = tk.Tk()
+        win = ctk.CTk()
         container: tk.Widget = win
         win.title("Collection Viewer")
         init_tk_theme(win)

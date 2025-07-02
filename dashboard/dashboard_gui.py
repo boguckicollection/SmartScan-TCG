@@ -6,6 +6,7 @@ from pathlib import Path
 import random
 import tkinter as tk
 from tkinter import ttk
+import customtkinter as ctk
 
 import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -143,7 +144,7 @@ class DashboardFrame(ttk.Frame):
         tree.pack(fill="both", expand=True)
 
 
-class Dashboard(tk.Tk):
+class Dashboard(ctk.CTk):
     """Main dashboard window."""
 
     def __init__(self) -> None:

@@ -2,6 +2,7 @@
 
 # GUI i interfejs
 pillow
+customtkinter
 
 # OCR i analiza obrazu
 opencv-python
