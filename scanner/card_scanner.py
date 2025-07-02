@@ -233,10 +233,10 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
         result["Number"] = promo_match.group(1)
         result["Set"] = PROMO_SETS.get(promo_match.group(1).split()[0], "Unknown")
         api_data = query_card_by_id(card_id)
-    elif set_name:
-        api_data = query_tcg_api(None, number, set_name)
     else:
         api_data = query_tcg_api(name, number)
+        if not api_data and set_name:
+            api_data = query_tcg_api(None, number, set_name)
 
     if api_data:
         result.update({k: v for k, v in api_data.items() if v})
