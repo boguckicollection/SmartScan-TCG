@@ -72,10 +72,10 @@ def test_scan_image_regions(tmp_path, monkeypatch):
     create_dummy_image(img_path, size=(200, 300))
     monkeypatch.setattr(card_scanner.Image, "open", lambda p: card_scanner.Image.Image(size=(200, 300)))
 
-    calls = []
+    ocr_calls = []
 
     def fake_extract_text(image, config=None):
-        calls.append(image.size)
+        ocr_calls.append(image.size)
         if image.size == (160, 66):
             return "Name"
         return "Set: Base\n1/102"
@@ -88,7 +88,7 @@ def test_scan_image_regions(tmp_path, monkeypatch):
 
     assert data["Name"] == "Name"
     assert data["Number"] == "1/102"
-    assert calls == [(160, 66), (70, 19)]
+    assert ocr_calls == [(160, 66), (70, 19)]
 
 
 def test_scan_image_precropped(tmp_path, monkeypatch):
@@ -96,10 +96,10 @@ def test_scan_image_precropped(tmp_path, monkeypatch):
     # Small square image triggers the precropped path
     create_dummy_image(img_path, size=(100, 100))
     monkeypatch.setattr(card_scanner.Image, "open", lambda p: card_scanner.Image.Image(size=(100, 100)))
-    calls = []
+    ocr_calls = []
 
     def fake_extract_text(image, config=None):
-        calls.append(image.size)
+        ocr_calls.append(image.size)
         return "Name\n1/102"
 
     monkeypatch.setattr(card_scanner, "extract_text", fake_extract_text)
@@ -111,7 +111,7 @@ def test_scan_image_precropped(tmp_path, monkeypatch):
     assert data["Name"] == "Name"
     assert data["Number"] == "1/102"
     # Only one OCR call should be made on the entire image
-    assert calls == [(100, 100)]
+    assert ocr_calls == [(100, 100)]
 
 
 def test_export_to_csv(tmp_path):
@@ -177,10 +177,10 @@ def test_lookup_with_number_and_set(tmp_path, monkeypatch):
     create_dummy_image(img_path, size=(200, 300))
     monkeypatch.setattr(card_scanner.Image, "open", lambda p: card_scanner.Image.Image(size=(200, 300)))
 
-    calls = []
+    ocr_calls = []
 
     def fake_extract_text(image, config=None):
-        calls.append(image.size)
+        ocr_calls.append(image.size)
         if image.size == (160, 66):
             return "Wrong Name"
         return "Set: Base\n1/102"
@@ -188,18 +188,21 @@ def test_lookup_with_number_and_set(tmp_path, monkeypatch):
     monkeypatch.setattr(card_scanner, "extract_text", fake_extract_text)
     monkeypatch.setattr(card_scanner, "enhance_for_ocr", lambda img: img)
 
-    captured = {}
+    api_calls = []
 
     def fake_api(name, number, set_name=None):
-        captured["name"] = name
-        captured["number"] = number
-        captured["set"] = set_name
+        api_calls.append({"name": name, "number": number, "set": set_name})
+        if len(api_calls) == 1:
+            return None
         return {"Name": "Pikachu", "Number": number, "Set": set_name}
 
     monkeypatch.setattr(card_scanner, "query_tcg_api", fake_api)
 
     data = card_scanner.scan_image(img_path)
 
-    assert captured == {"name": None, "number": "1/102", "set": "Base"}
+    assert api_calls == [
+        {"name": "Wrong Name", "number": "1/102", "set": None},
+        {"name": None, "number": "1/102", "set": "Base"},
+    ]
     assert data["Name"] == "Pikachu"
     assert data["Set"] == "Base"
