@@ -3,7 +3,12 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageTk
 from scanner import card_scanner
-import sv_ttk
+from gui_utils import (
+    init_tk_theme,
+    set_window_icon,
+    TITLE_FONT,
+    FOOTER_FONT,
+)
 
 _scale: float = 1.0
 
@@ -170,7 +175,7 @@ def show_scan_results(data: list[dict]) -> None:
             card_scanner.export_to_csv(data, save_path)
             messagebox.showinfo(
                 "Skanowanie zakonczone",
-                f"Zapisano {len(data)} rekordy do {save_path}"
+                f"Zapisano {len(data)} rekordów do {save_path}"
             )
 
     btns = ttk.Frame(frame)
@@ -237,15 +242,9 @@ def main():
     _root = root
     root.title("TCG Organizer")
     icon_path = Path(__file__).resolve().parent / "assets" / "logo.png"
-    if icon_path.exists():
-        root.iconphoto(False, tk.PhotoImage(file=icon_path))
-    root.geometry("900x600")
-    root.resizable(True, True)
+    set_window_icon(root, str(icon_path) if icon_path.exists() else None)
     root.tk.call("tk", "scaling", _scale)
-
-    # Styl "Sun Valley" (sv-ttk) przypominający Windows 11
-    style = ttk.Style(root)
-    sv_ttk.set_theme("dark")
+    init_tk_theme(root)
 
     logo_path = Path(__file__).resolve().parent / "assets" / "logo.png"
     if logo_path.exists():
@@ -255,10 +254,10 @@ def main():
         header = ttk.Frame(root)
         header.pack(pady=(20, 10))
         ttk.Label(header, image=logo_img).pack(side="left", padx=(0, 10))
-        ttk.Label(header, text="TCG Organizer", font=("Segoe UI", 18, "bold")).pack(side="left")
+        ttk.Label(header, text="TCG Organizer", font=TITLE_FONT).pack(side="left")
         root.logo_img = logo_img
     else:
-        ttk.Label(root, text="TCG Organizer", font=("Segoe UI", 18, "bold")).pack(pady=(20, 10))
+        ttk.Label(root, text="TCG Organizer", font=TITLE_FONT).pack(pady=(20, 10))
 
     body = ttk.Frame(root)
     body.pack(fill="both", expand=True)
@@ -292,7 +291,7 @@ def main():
     cmb.bind("<<ComboboxSelected>>", _on_scale)
     cmb.pack(side="left")
 
-    ttk.Label(root, text="power by boguckicollection", font=("Segoe UI", 8)).pack(side="bottom", pady=10)
+    ttk.Label(root, text="power by boguckicollection", font=FOOTER_FONT).pack(side="bottom", pady=10)
 
     build_sidebar()
     start_dashboard()
