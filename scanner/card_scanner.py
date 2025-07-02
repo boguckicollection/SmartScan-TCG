@@ -18,7 +18,6 @@ if __name__ == "__main__" and __package__ is None:
 from scanner.ocr_engine import extract_text
 from PIL import Image
 from scanner.data_exporter import export_to_csv
-from unidecode import unidecode
 import requests
 
 EXCLUDED_WORDS = {
@@ -63,11 +62,16 @@ NUMBER_OCR_CONFIG = "--psm 6 -c tessedit_char_whitelist=/0123456789"
 
 def clean_card_name(text: str) -> str:
     """Return ``text`` cleaned of unwanted tokens."""
-    text = unidecode(text)
-    text = re.sub(r"[^a-zA-Z0-9\s\-]", "", text)
-    words = text.lower().split()
-    filtered = [w.capitalize() for w in words if w not in EXCLUDED_WORDS and not w.isdigit()]
-    return " ".join(filtered)
+    if not text:
+        return "Unknown"
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9\s\-]", " ", text)
+    tokens = [
+        w.capitalize()
+        for w in text.split()
+        if w not in EXCLUDED_WORDS and not w.isdigit()
+    ]
+    return " ".join(tokens) if tokens else "Unknown"
 
 
 def is_valid_name_line(line: str) -> bool:
@@ -177,6 +181,13 @@ def fix_merged_number(text: str) -> str:
     if match:
         return f"0{match.group(1)} {match.group(2)}"
     return text
+
+
+def fix_card_number(number: str) -> str:
+    """Return ``number`` with simple merged prefix errors corrected."""
+    if re.match(r"^\d{3}/\d{2}$", number):
+        return f"{number[:2]} {number[2:]}"
+    return number
 
 
 def extract_promo_card_id(text: str) -> str | None:
@@ -321,7 +332,11 @@ def lookup_card_by_number_and_total(card_number: str, set_total: str, approx_nam
 
 
 
-def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
+def parse_card_text(
+    name_text: str | None,
+    number_text: str | None,
+    cleaned_name: str | None = None,
+) -> dict:
     """Parse card name and number from OCR text fragments and query the API."""
     full_text = (name_text or "") + "\n" + (number_text or "")
     lang = detect_language(full_text)
@@ -336,11 +351,11 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
         api_data = query_card_by_id(promo_id, lang)
 
     raw_name = name_text.strip() if name_text else "Unknown"
-    cleaned_name = clean_card_name(raw_name)
-    print(f"[DEBUG] OCR raw name: '{raw_name}' => Cleaned: '{cleaned_name}'")
-    if len(cleaned_name) < 3:
-        cleaned_name = "Unknown"
-    name = cleaned_name
+    cleaned = cleaned_name if cleaned_name is not None else clean_card_name(raw_name)
+    print(f"[DEBUG] OCR raw name: '{raw_name}' → Cleaned: '{cleaned}'")
+    if len(cleaned) < 3:
+        cleaned = "Unknown"
+    name = cleaned
 
     number = ""
     promo_match = None
@@ -349,6 +364,7 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
     total = None
     if number_text:
         number = clean_number(number_text)
+        number = fix_card_number(number)
         promo_match = PROMO_REGEX.search(number_text)
         set_name = parse_set(number_text)
         card_num, total = extract_number_total(number_text)
@@ -396,7 +412,8 @@ def scan_image(path: Path) -> dict:
     # details from the result.
     if width <= 120 and height <= 120:
         full_text = extract_text(image, config=NAME_OCR_CONFIG)
-        return parse_card_text(full_text, full_text)
+        cleaned_full = clean_card_name(full_text)
+        return parse_card_text(full_text, full_text, cleaned_full)
 
     # Name region - top portion of the card
     name_bbox = (
@@ -407,9 +424,11 @@ def scan_image(path: Path) -> dict:
     )
     name_crop = safe_crop(image, name_bbox)
     name_text = None
+    cleaned_name = None
     if name_crop:
         name_crop = enhance_for_ocr(name_crop)
         name_text = extract_text(name_crop, config=NAME_OCR_CONFIG)
+        cleaned_name = clean_card_name(name_text)
 
     # Number region - lower left corner
     number_bbox = (
@@ -423,7 +442,7 @@ def scan_image(path: Path) -> dict:
         extract_text(number_crop, config=NUMBER_OCR_CONFIG) if number_crop else None
     )
 
-    return parse_card_text(name_text, number_text)
+    return parse_card_text(name_text, number_text, cleaned_name)
 
 
 def scan_directory(dir_path: Path) -> list:
