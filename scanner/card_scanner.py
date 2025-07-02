@@ -21,6 +21,25 @@ from scanner.data_exporter import export_to_csv
 from unidecode import unidecode
 import requests
 
+EXCLUDED_WORDS = {
+    "basic",
+    "trainer",
+    "supporter",
+    "stage1",
+    "stage2",
+    "stage3",
+    "evolves",
+    "from",
+    "item",
+    "stadium",
+    "pokemon",
+    "hp",
+    "ex",
+    "gx",
+    "vmax",
+    "vstar",
+}
+
 
 FORBIDDEN_WORDS = [
     "trainer",
@@ -42,24 +61,13 @@ NAME_OCR_CONFIG = (
 NUMBER_OCR_CONFIG = "--psm 6 -c tessedit_char_whitelist=/0123456789"
 
 
-def clean_name(name: str) -> str:
-    """Return a simplified card name for consistent comparison."""
-    name = unidecode(name)
-    # Keep only alphanumeric characters and apostrophes
-    cleaned = re.sub(r"[^a-zA-Z0-9' ]", " ", name)
-    words = cleaned.split()
-    blacklist = {
-        "trainer",
-        "supporter",
-        "basic",
-        "evolves",
-        "from",
-        "stage1",
-        "stage2",
-        "stage3",
-    }
-    filtered = [w for w in words if w.lower() not in blacklist and not any(c.isdigit() for c in w)]
-    return " ".join(filtered) if filtered else "Unknown"
+def clean_card_name(text: str) -> str:
+    """Return ``text`` cleaned of unwanted tokens."""
+    text = unidecode(text)
+    text = re.sub(r"[^a-zA-Z0-9\s\-]", "", text)
+    words = text.lower().split()
+    filtered = [w.capitalize() for w in words if w not in EXCLUDED_WORDS and not w.isdigit()]
+    return " ".join(filtered)
 
 
 def is_valid_name_line(line: str) -> bool:
@@ -75,7 +83,7 @@ def extract_card_name(lines: list[str]) -> str:
     for line in lines:
         if not is_valid_name_line(line):
             continue
-        return clean_name(line)
+        return clean_card_name(line)
     return "Unknown"
 
 
@@ -327,10 +335,12 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
         print(f"[OCR FIXED PROMO ID] {promo_id}")
         api_data = query_card_by_id(promo_id, lang)
 
-    name = "Unknown"
-    if name_text:
-        lines = [line.strip() for line in name_text.splitlines() if line.strip()]
-        name = extract_card_name(lines)
+    raw_name = name_text.strip() if name_text else "Unknown"
+    cleaned_name = clean_card_name(raw_name)
+    print(f"[DEBUG] OCR raw name: '{raw_name}' => Cleaned: '{cleaned_name}'")
+    if len(cleaned_name) < 3:
+        cleaned_name = "Unknown"
+    name = cleaned_name
 
     number = ""
     promo_match = None
