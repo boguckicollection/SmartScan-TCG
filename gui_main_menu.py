@@ -96,24 +96,30 @@ def main():
 
     logo_path = Path(__file__).resolve().parent / "assets" / "logo.png"
     if logo_path.exists():
-        logo_img = tk.PhotoImage(file=logo_path)
-        ttk.Label(root, image=logo_img).pack(pady=(20, 10))
+        # shrink the logo and place it next to the title
+        img = Image.open(logo_path)
+        img.thumbnail((48, 48))
+        logo_img = ImageTk.PhotoImage(img)
+        header = ttk.Frame(root)
+        header.pack(pady=(20, 10))
+        ttk.Label(header, image=logo_img).pack(side="left", padx=(0, 10))
+        ttk.Label(header, text="TCG Organizer", font=("Segoe UI", 18, "bold")).pack(side="left")
         root.logo_img = logo_img
-
-    ttk.Label(root, text="TCG Organizer", font=("Segoe UI", 18, "bold")).pack(pady=(0, 10))
+    else:
+        ttk.Label(root, text="TCG Organizer", font=("Segoe UI", 18, "bold")).pack(pady=(20, 10))
     ttk.Label(root, text="Wybierz tryb pracy", font=("Segoe UI", 11)).pack(pady=(0, 20))
 
     # Przycisk: skanowanie
-    ttk.Button(root, text="1. Skanowanie kart", command=start_scan, width=30).pack(pady=10)
+    ttk.Button(root, text="1. Skanowanie kart", command=start_scan, style="Accent.TButton", width=28).pack(pady=10)
 
     # Przycisk: przeglądanie kolekcji
-    ttk.Button(root, text="2. Przeglądanie kolekcji", command=start_viewer, width=30).pack(pady=10)
+    ttk.Button(root, text="2. Przeglądanie kolekcji", command=start_viewer, style="Accent.TButton", width=28).pack(pady=10)
 
     # Przycisk: analiza sprzedaży
-    ttk.Button(root, text="3. Analiza sprzedaży (Shoper)", command=start_sales, width=30).pack(pady=10)
+    ttk.Button(root, text="3. Analiza sprzedaży (Shoper)", command=start_sales, style="Accent.TButton", width=28).pack(pady=10)
 
     # Stopka
-    ttk.Label(root, text="v1.0 | by TCG Project", font=("Segoe UI", 8)).pack(side="bottom", pady=10)
+    ttk.Label(root, text="power by boguckicollection", font=("Segoe UI", 8)).pack(side="bottom", pady=10)
 
     root.mainloop()
 
