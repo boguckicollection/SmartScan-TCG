@@ -126,10 +126,9 @@ def safe_crop(image: Image.Image, bbox: tuple[int, int, int, int]):
     return image.crop(bbox)
 
 
-API_URL = "https://api.tcgdex.net/v2/cards"
-API_CARD_URL = "https://api.tcgdex.net/v2/en/cards"
-SET_LIST_URL = "https://api.tcgdex.net/v2/en/sets"
-CARD_URL_TEMPLATE = "https://api.tcgdex.net/v2/en/cards/{set_id}-{card_number}"
+API_BASE_URL = "https://api.tcgdex.net/v2"
+SET_LIST_URL = f"{API_BASE_URL}/en/sets"
+CARD_URL_TEMPLATE = f"{API_BASE_URL}/en/cards/{{set_id}}-{{card_number}}"
 
 PROMO_REGEX = re.compile(r"\b([A-Z]{2,4}\s?EN?\s?\d{1,4})\b")
 PROMO_SETS = {
@@ -139,6 +138,25 @@ PROMO_SETS = {
     "BW": "bwpromos",
     "XY": "xypromos",
 }
+
+# ---------------------------------------------------------------------------
+# Language detection utilities
+# ---------------------------------------------------------------------------
+
+def detect_language(text: str | None) -> str:
+    """Return ISO language code guessed from ``text``."""
+    if not text:
+        return "en"
+    if re.search(r"[\u4e00-\u9fff]", text):
+        return "zh-hans"
+    if re.search(r"[ぁ-んァ-ン]", text):
+        return "ja"
+    if re.search(r"\d{2}\s+\d{2}/\d{2}", text):
+        # Common pattern on Chinese/Japanese promos
+        return "zh-hans"
+    if re.search(r"PROMO|SVP", text, re.IGNORECASE):
+        return "en"
+    return "en"
 
 # Regex pattern for extracting ``number/total`` from OCR text.
 NUMBER_TOTAL_REGEX = re.compile(r"(\d{1,3})\/(\d{1,3})")
@@ -160,7 +178,12 @@ def parse_set(text: str) -> str | None:
     return SET_MAP.get(raw.upper(), raw)
 
 
-def query_tcg_api(name: str | None, number: str | None, set_name: str | None = None) -> dict | None:
+def query_tcg_api(
+    name: str | None,
+    number: str | None,
+    set_name: str | None = None,
+    lang: str = "en",
+) -> dict | None:
     """Query the TCGdex API for card details.
 
     Parameters
@@ -181,7 +204,8 @@ def query_tcg_api(name: str | None, number: str | None, set_name: str | None = N
         params["set"] = set_name
 
     try:
-        resp = requests.get(API_URL, params=params, timeout=5)
+        url = f"{API_BASE_URL}/{lang}/cards"
+        resp = requests.get(url, params=params, timeout=5)
         resp.raise_for_status()
         data = resp.json()
 
@@ -200,10 +224,11 @@ def query_tcg_api(name: str | None, number: str | None, set_name: str | None = N
         return None
 
 
-def query_card_by_id(card_id: str) -> dict | None:
+def query_card_by_id(card_id: str, lang: str = "en") -> dict | None:
     """Query the TCGdex API for a card given its identifier."""
     try:
-        resp = requests.get(f"{API_CARD_URL}/{card_id}", timeout=5)
+        url = f"{API_BASE_URL}/{lang}/cards/{card_id}"
+        resp = requests.get(url, timeout=5)
         resp.raise_for_status()
         data = resp.json()
     except Exception:
@@ -266,6 +291,10 @@ def lookup_card_by_number_and_total(card_number: str, set_total: str, approx_nam
 
 def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
     """Parse card name and number from OCR text fragments and query the API."""
+    full_text = (name_text or "") + "\n" + (number_text or "")
+    lang = detect_language(full_text)
+    print(f"[LANG DETECTED] {lang}")
+
     name = "Unknown"
     if name_text:
         lines = [line.strip() for line in name_text.splitlines() if line.strip()]
@@ -288,14 +317,21 @@ def parse_card_text(name_text: str | None, number_text: str | None) -> dict:
         card_id = promo_match.group(1).lower().replace(" ", "-")
         result["Number"] = promo_match.group(1)
         result["Set"] = PROMO_SETS.get(promo_match.group(1).split()[0], "Unknown")
-        api_data = query_card_by_id(card_id)
+        api_data = query_card_by_id(card_id, lang)
+    elif lang == "zh-hans" and number_text:
+        id_match = re.search(r"(\d{2})\s+\d{2}/\d{2}", number_text)
+        if id_match:
+            card_id = f"ccp-{id_match.group(1)}"
+            api_data = query_card_by_id(card_id, lang)
+        else:
+            api_data = query_tcg_api(name, number, lang=lang)
     else:
-        api_data = query_tcg_api(name, number)
+        api_data = query_tcg_api(name, number, lang=lang)
         if not api_data and number:
             print(f"[API fallback] Retrying with only number: {number}")
-            api_data = query_tcg_api(None, number)
+            api_data = query_tcg_api(None, number, lang=lang)
         if not api_data and set_name:
-            api_data = query_tcg_api(None, number, set_name)
+            api_data = query_tcg_api(None, number, set_name, lang=lang)
         if not api_data and card_num and total:
             approx = name if name != "Unknown" else ""
             api_data = lookup_card_by_number_and_total(card_num, total, approx)
