@@ -242,7 +242,7 @@ def main():
     global _root, _sidebar, _content, _scale
     root = ctk.CTk()
     _root = root
-    root.title("TCG Organizer")
+    root.title("SmartScanTCG")
     icon_path = Path(__file__).resolve().parent / "assets" / "logo.png"
     set_window_icon(root, str(icon_path) if icon_path.exists() else None)
     root.tk.call("tk", "scaling", _scale)
@@ -275,10 +275,10 @@ def main():
         header = ctk.CTkFrame(_sidebar, fg_color="transparent")
         header.pack(pady=(10, 20))
         ctk.CTkLabel(header, image=logo_img, text="").pack(side="left", padx=(0, 10))
-        ctk.CTkLabel(header, text="🃏 TCG Organizer", font=TITLE_FONT).pack(side="left")
+        ctk.CTkLabel(header, text="SmartScanTCG", font=TITLE_FONT).pack(side="left")
         root.logo_img = logo_img
     else:
-        ctk.CTkLabel(_sidebar, text="🃏 TCG Organizer", font=TITLE_FONT).pack(pady=(10, 20))
+        ctk.CTkLabel(_sidebar, text="SmartScanTCG", font=TITLE_FONT).pack(pady=(10, 20))
 
     _content = ctk.CTkFrame(body, fg_color="#222222")
     _content.pack(side="left", fill="both", expand=True, padx=10, pady=10)
