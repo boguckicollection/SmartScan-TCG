@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import tkinter as tk
-from tkinter import filedialog, ttk
+from tkinter import filedialog, ttk, messagebox
 import customtkinter as ctk
 from PIL import Image, ImageTk
 import pandas as pd
@@ -207,6 +207,19 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         scan_dir = filedialog.askdirectory(title="Wybierz folder skanów")
         if not scan_dir:
             return
+        model_dir = Path(__file__).resolve().parent
+        missing = [
+            p.name
+            for p in (model_dir / "card_model.pt", model_dir / "type_model.pt")
+            if not p.exists()
+        ]
+        if missing:
+            messagebox.showerror(
+                "Brak modeli",
+                "Brak plików: " + ", ".join(missing) + 
+                "\nUmieść je w folderze 'scanner' lub wytrenuj modele."
+            )
+            return
         progress_var.set(0)
         progress.pack(fill="x", padx=10, pady=5)
         status_label.pack(pady=2)
@@ -240,6 +253,47 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             df.loc[len(df)] = row
             tree.insert("", "end", iid=str(len(df) - 1), values=list(row))
 
+    def build_dataset_only() -> None:
+        scan_dir = filedialog.askdirectory(title="Wybierz folder skanów")
+        if not scan_dir:
+            return
+        model_dir = Path(__file__).resolve().parent
+        missing = [
+            p.name
+            for p in (model_dir / "card_model.pt", model_dir / "type_model.pt")
+            if not p.exists()
+        ]
+        if missing:
+            messagebox.showerror(
+                "Brak modeli",
+                "Brak plików: " + ", ".join(missing) +
+                "\nUmieść je w folderze 'scanner' lub wytrenuj modele."
+            )
+            return
+        progress.configure(maximum=1)
+        progress_var.set(0)
+        progress.pack(fill="x", padx=10, pady=5)
+        status_label.pack(pady=2)
+
+        status_var.set("Budowanie datasetu...")
+        container.update_idletasks()
+        dataset_builder.build_dataset(scan_dir, path)
+        progress_var.set(1)
+
+        status_var.set("Zakończono")
+        container.update_idletasks()
+
+        tree.delete(*tree.get_children())
+        try:
+            new_df = pd.read_csv(path)
+        except pd.errors.EmptyDataError:
+            new_df = pd.DataFrame(columns=DEFAULT_COLUMNS)
+        df.drop(df.index, inplace=True)
+        for _, row in new_df.iterrows():
+            df.loc[len(df)] = row
+            tree.insert("", "end", iid=str(len(df) - 1), values=list(row))
+
+    ctk.CTkButton(btn_frame, text="Buduj dataset", command=build_dataset_only).pack(side="left", padx=5)
     ctk.CTkButton(btn_frame, text="Trenuj modele", command=build_and_train).pack(side="left", padx=5)
 
     if master is None:
