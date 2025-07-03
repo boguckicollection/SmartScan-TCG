@@ -9,6 +9,9 @@ import customtkinter as ctk
 from PIL import Image, ImageTk
 import pandas as pd
 from .set_mapping import SET_MAP
+
+# Reverse lookup of set names to their abbreviations
+INV_SET_MAP: dict[str, str] = {v: k for k, v in SET_MAP.items()}
 from gui_utils import init_tk_theme
 
 from . import dataset_builder, image_analyzer
@@ -117,9 +120,11 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             frm = ctk.CTkFrame(detail, fg_color="transparent")
             frm.pack(fill="x", padx=10, pady=2)
             ctk.CTkLabel(frm, text=col, width=120).pack(side="left")
-            var = tk.StringVar(value=str(df.at[idx, col]))
+            value = str(df.at[idx, col])
             if col == "set" and SET_MAP:
-                values = sorted(SET_MAP.keys())
+                display = SET_MAP.get(value.upper(), value)
+                var = tk.StringVar(value=display)
+                values = sorted(SET_MAP.values())
                 ttk.Combobox(
                     frm,
                     textvariable=var,
@@ -128,6 +133,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
                     width=30,
                 ).pack(side="left")
             elif col in {"holo", "reverse"}:
+                var = tk.StringVar(value=value)
                 ttk.Combobox(
                     frm,
                     textvariable=var,
@@ -136,6 +142,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
                     width=30,
                 ).pack(side="left")
             else:
+                var = tk.StringVar(value=value)
                 ttk.Entry(frm, textvariable=var, width=30).pack(side="left")
             vars[col] = var
 
@@ -145,7 +152,10 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
 
         def save() -> None:
             for col, var in vars.items():
-                df.at[idx, col] = var.get()
+                val = var.get()
+                if col == "set" and SET_MAP:
+                    val = INV_SET_MAP.get(val, val)
+                df.at[idx, col] = val
             save_df()
             tree.item(item, values=list(df.loc[idx]))
             close()
