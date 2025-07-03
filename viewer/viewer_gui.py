@@ -10,7 +10,21 @@ from PIL import Image, ImageTk
 import pandas as pd
 from gui_utils import init_tk_theme
 
-from scanner.set_mapping import SET_MAP
+from scanner.set_mapping import SET_MAP, SET_NAMES, INV_SET_MAP
+
+
+class FilterableCombobox(ttk.Combobox):
+    """Combobox that filters its values as the user types."""
+
+    def __init__(self, master: tk.Widget | None, values: list[str], **kwargs) -> None:
+        super().__init__(master, values=values, **kwargs)
+        self._all_values = list(values)
+        self.bind("<KeyRelease>", self._on_keyrelease)
+
+    def _on_keyrelease(self, event: tk.Event) -> None:
+        pattern = self.get().lower()
+        filtered = [v for v in self._all_values if pattern in v.lower()]
+        self["values"] = filtered if filtered else self._all_values
 
 
 def run(
@@ -118,10 +132,13 @@ def run(
             frm = ttk.Frame(detail)
             frm.pack(fill="x", padx=10, pady=2)
             ttk.Label(frm, text=col, width=12).pack(side="left")
-            var = tk.StringVar(value=str(df.at[idx, col]))
-            if col == "Set" and SET_MAP:
-                values = sorted(SET_MAP.keys())
-                cmb = ttk.Combobox(frm, textvariable=var, values=values)
+            current = str(df.at[idx, col])
+            var = tk.StringVar(value=current)
+            if col == "Set" and SET_NAMES:
+                if current in SET_NAMES:
+                    var.set(SET_NAMES[current][0])
+                values = sorted(INV_SET_MAP.keys())
+                cmb = FilterableCombobox(frm, textvariable=var, values=values)
                 cmb.pack(side="left", fill="x", expand=True)
             else:
                 ttk.Entry(frm, textvariable=var, width=30).pack(
@@ -135,7 +152,10 @@ def run(
 
         def save() -> None:
             for col, var in vars.items():
-                df.at[idx, col] = var.get()
+                val = var.get()
+                if col == "Set" and SET_NAMES:
+                    val = INV_SET_MAP.get(val, val)
+                df.at[idx, col] = val
             df.to_csv(csv_path, index=False)
             tree.item(item, values=list(df.loc[idx]))
             close()

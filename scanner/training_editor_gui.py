@@ -8,7 +8,7 @@ from tkinter import filedialog, ttk, messagebox
 import customtkinter as ctk
 from PIL import Image, ImageTk
 import pandas as pd
-from .set_mapping import SET_MAP
+from .set_mapping import SET_MAP, SET_NAMES, INV_SET_MAP
 
 
 class FilterableCombobox(ttk.Combobox):
@@ -24,8 +24,7 @@ class FilterableCombobox(ttk.Combobox):
         filtered = [v for v in self._all_values if pattern in v.lower()]
         self["values"] = filtered if filtered else self._all_values
 
-# Reverse lookup of set names to their abbreviations
-INV_SET_MAP: dict[str, str] = {v: k for k, v in SET_MAP.items()}
+# Reverse lookup mapping imported from set_mapping
 from gui_utils import init_tk_theme
 
 from . import dataset_builder, image_analyzer
@@ -149,10 +148,13 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             frm.pack(fill="x", padx=10, pady=2)
             ctk.CTkLabel(frm, text=col, width=120).pack(side="left")
             value = str(df.at[idx, col])
-            if col == "set" and SET_MAP:
-                display = SET_MAP.get(value.upper(), value)
+            if col == "set" and SET_NAMES:
+                if value in SET_NAMES:
+                    display = SET_NAMES[value][0]
+                else:
+                    display = value
                 var = tk.StringVar(value=display)
-                values = sorted(SET_MAP.values())
+                values = sorted(INV_SET_MAP.keys())
                 FilterableCombobox(
                     frm,
                     textvariable=var,
@@ -179,10 +181,18 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             tree.pack(fill="both", expand=True)
 
         def save() -> None:
+            def norm_int(v: str) -> str:
+                try:
+                    return str(int(float(v)))
+                except Exception:
+                    return v
+
             for col, var in vars.items():
                 val = var.get()
-                if col == "set" and SET_MAP:
+                if col == "set" and SET_NAMES:
                     val = INV_SET_MAP.get(val, val)
+                elif col in {"karton", "rzad", "pozycja"}:
+                    val = norm_int(val)
                 df.at[idx, col] = val
             # generate new card_id from karton/rzad/pozycja
             karton = df.at[idx, "karton"]
@@ -190,7 +200,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             pos = df.at[idx, "pozycja"]
             try:
                 pos_int = max(0, min(int(pos), 1000))
-            except ValueError:
+            except Exception:
                 pos_int = 0
             df.at[idx, "pozycja"] = str(pos_int)
             if karton and rzad and pos:
