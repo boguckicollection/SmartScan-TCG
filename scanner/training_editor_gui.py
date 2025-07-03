@@ -11,7 +11,8 @@ import pandas as pd
 from .set_mapping import SET_MAP
 from gui_utils import init_tk_theme
 
-from . import dataset_builder
+from . import dataset_builder, image_analyzer
+from .classifier import CardClassifier
 
 DEFAULT_PATH = Path(__file__).resolve().parent / "dataset.csv"
 DEFAULT_COLUMNS = ["image_path", "name", "card_id", "set", "holo", "reverse"]
@@ -31,6 +32,34 @@ def append_images(csv_path: str | Path, image_paths: list[str]) -> pd.DataFrame:
         df.loc[len(df)] = [p, "", "", "", False, False]
     df.to_csv(path, index=False)
     return df
+
+
+def train_card_classifier(
+    csv_path: str | Path,
+    model_path: str | Path,
+    epochs: int = 1,
+) -> CardClassifier:
+    """Train card identifier classifier from ``csv_path``."""
+    try:
+        import torch
+        from torchvision import transforms
+    except Exception as exc:  # pragma: no cover - optional dependency
+        raise ImportError("PyTorch is required for training") from exc
+
+    df = pd.read_csv(csv_path)
+    images = []
+    labels = []
+    transform = transforms.Compose([transforms.Resize((64, 64)), transforms.ToTensor()])
+    for _, row in df.iterrows():
+        img = Image.open(row["image_path"]).convert("RGB")
+        images.append(transform(img))
+        label = row.get("card_id") or row.get("name", "")
+        labels.append(str(label))
+
+    clf = CardClassifier(model_name="mobilenet", device="cpu")
+    clf.fit(images, labels, epochs=max(1, epochs))
+    clf.save(model_path)
+    return clf
 
 
 def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> tk.Widget | None:
@@ -158,6 +187,50 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
     btn_frame.pack(pady=5)
     ctk.CTkButton(btn_frame, text="Dodaj skany", command=add_scans).pack(side="left")
     ctk.CTkButton(btn_frame, text="Skanuj karty", command=scan_images).pack(side="left", padx=5)
+
+    progress_var = tk.DoubleVar(value=0)
+    status_var = tk.StringVar(value="")
+    progress = ttk.Progressbar(container, variable=progress_var, maximum=3)
+    status_label = ctk.CTkLabel(container, textvariable=status_var)
+
+    def build_and_train() -> None:
+        scan_dir = filedialog.askdirectory(title="Wybierz folder skanów")
+        if not scan_dir:
+            return
+        progress_var.set(0)
+        progress.pack(fill="x", padx=10, pady=5)
+        status_label.pack(pady=2)
+
+        status_var.set("Budowanie datasetu...")
+        container.update_idletasks()
+        dataset_builder.build_dataset(scan_dir, path)
+        progress_var.set(1)
+
+        status_var.set("Trenowanie klasyfikatora typu...")
+        container.update_idletasks()
+        image_analyzer.train_type_classifier(path, Path(__file__).resolve().parent / "type_model.pt")
+        progress_var.set(2)
+
+        status_var.set("Trenowanie klasyfikatora kart...")
+        container.update_idletasks()
+        train_card_classifier(path, Path(__file__).resolve().parent / "card_model.pt")
+        progress_var.set(3)
+
+        status_var.set("Zakończono")
+        container.update_idletasks()
+
+        # reload dataset
+        tree.delete(*tree.get_children())
+        try:
+            new_df = pd.read_csv(path)
+        except pd.errors.EmptyDataError:
+            new_df = pd.DataFrame(columns=DEFAULT_COLUMNS)
+        df.drop(df.index, inplace=True)
+        for _, row in new_df.iterrows():
+            df.loc[len(df)] = row
+            tree.insert("", "end", iid=str(len(df) - 1), values=list(row))
+
+    ctk.CTkButton(btn_frame, text="Trenuj modele", command=build_and_train).pack(side="left", padx=5)
 
     if master is None:
         container.mainloop()
