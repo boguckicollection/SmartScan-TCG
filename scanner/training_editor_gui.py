@@ -10,6 +10,20 @@ from PIL import Image, ImageTk
 import pandas as pd
 from .set_mapping import SET_MAP
 
+
+class FilterableCombobox(ttk.Combobox):
+    """Combobox that filters its values as the user types."""
+
+    def __init__(self, master: tk.Widget | None, values: list[str], **kwargs) -> None:
+        super().__init__(master, values=values, **kwargs)
+        self._all_values = list(values)
+        self.bind("<KeyRelease>", self._on_keyrelease)
+
+    def _on_keyrelease(self, event: tk.Event) -> None:
+        pattern = self.get().lower()
+        filtered = [v for v in self._all_values if pattern in v.lower()]
+        self["values"] = filtered if filtered else self._all_values
+
 # Reverse lookup of set names to their abbreviations
 INV_SET_MAP: dict[str, str] = {v: k for k, v in SET_MAP.items()}
 from gui_utils import init_tk_theme
@@ -18,7 +32,17 @@ from . import dataset_builder, image_analyzer
 from .classifier import CardClassifier
 
 DEFAULT_PATH = Path(__file__).resolve().parent / "dataset.csv"
-DEFAULT_COLUMNS = ["image_path", "name", "card_id", "set", "holo", "reverse"]
+DEFAULT_COLUMNS = [
+    "image_path",
+    "name",
+    "card_id",
+    "set",
+    "holo",
+    "reverse",
+    "karton",
+    "rzad",
+    "pozycja",
+]
 
 
 def append_images(csv_path: str | Path, image_paths: list[str]) -> pd.DataFrame:
@@ -32,7 +56,7 @@ def append_images(csv_path: str | Path, image_paths: list[str]) -> pd.DataFrame:
     else:
         df = pd.DataFrame(columns=DEFAULT_COLUMNS)
     for p in image_paths:
-        df.loc[len(df)] = [p, "", "", "", False, False]
+        df.loc[len(df)] = [p, "", "", "", False, False, "", "", ""]
     df.to_csv(path, index=False)
     return df
 
@@ -125,11 +149,11 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
                 display = SET_MAP.get(value.upper(), value)
                 var = tk.StringVar(value=display)
                 values = sorted(SET_MAP.values())
-                ttk.Combobox(
+                FilterableCombobox(
                     frm,
                     textvariable=var,
                     values=values,
-                    state="readonly",
+                    state="normal",
                     width=30,
                 ).pack(side="left")
             elif col in {"holo", "reverse"}:
@@ -156,6 +180,17 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
                 if col == "set" and SET_MAP:
                     val = INV_SET_MAP.get(val, val)
                 df.at[idx, col] = val
+            # generate new card_id from karton/rzad/pozycja
+            karton = df.at[idx, "karton"]
+            rzad = df.at[idx, "rzad"]
+            pos = df.at[idx, "pozycja"]
+            try:
+                pos_int = max(0, min(int(pos), 1000))
+            except ValueError:
+                pos_int = 0
+            df.at[idx, "pozycja"] = str(pos_int)
+            if karton and rzad and pos:
+                df.at[idx, "card_id"] = f"K{karton}_R{rzad}_P{pos_int:04d}"
             save_df()
             tree.item(item, values=list(df.loc[idx]))
             close()
@@ -172,7 +207,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         if not paths:
             return
         for p in paths:
-            df.loc[len(df)] = [p, "", "", "", False, False]
+            df.loc[len(df)] = [p, "", "", "", False, False, "", "", ""]
             tree.insert("", "end", iid=str(len(df) - 1), values=list(df.loc[len(df) - 1]))
         save_df()
 

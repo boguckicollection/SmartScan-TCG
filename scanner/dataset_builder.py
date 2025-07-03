@@ -36,6 +36,9 @@ def label_image(path: Path) -> Dict[str, object]:
         "set": set_name,
         "holo": bool(image_data.get("holo")),
         "reverse": bool(image_data.get("reverse")),
+        "karton": "",
+        "rzad": "",
+        "pozycja": "",
     }
 
 
@@ -52,7 +55,17 @@ def build_dataset(scan_dir: str | Path, csv_path: str | Path | None = None) -> L
     with out.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(
             fh,
-            fieldnames=["image_path", "name", "card_id", "set", "holo", "reverse"],
+            fieldnames=[
+                "image_path",
+                "name",
+                "card_id",
+                "set",
+                "holo",
+                "reverse",
+                "karton",
+                "rzad",
+                "pozycja",
+            ],
         )
         writer.writeheader()
         writer.writerows(rows)
