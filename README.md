@@ -71,11 +71,17 @@ files directly in the `scanner/` folder. If downloads are unavailable you can
 train the models yourself:
 
 1. Run `scanner.dataset_builder.build_dataset` on a directory of labeled card
-   scans to create `dataset.csv`.
+   scans to create `dataset.csv`. The generated CSV contains the columns
+   `image_path`, `name`, `card_id`, `set`, `holo`, `reverse`, `karton`, `rzad`,
+   `pozycja`.
 2. Use `scanner.image_analyzer.train_type_classifier` to produce
    `type_model.pt` from this dataset.
 3. Train `scanner.classifier.CardClassifier` with your own labeled images to
    generate `card_model.pt`.
+
+Using a CSV with different columns will cause errors in the training editor.
+To append images while maintaining this layout, call
+`training_editor_gui.append_images`.
 
 Helper functions for loading and training these networks are available in
 `scanner.card_model` and `scanner.type_model`.
