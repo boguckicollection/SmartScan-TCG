@@ -270,6 +270,8 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
                 "\nUmieść je w folderze 'scanner' lub wytrenuj modele."
             )
             return
+
+        main
         progress.configure(maximum=1)
         progress_var.set(0)
         progress.pack(fill="x", padx=10, pady=5)
