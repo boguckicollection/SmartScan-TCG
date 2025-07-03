@@ -11,3 +11,13 @@ def test_append_images(tmp_path):
     assert csv.exists()
     saved = pd.read_csv(csv)
     assert list(saved["image_path"]) == ["a.jpg", "b.jpg"]
+
+
+def test_append_images_reindex(tmp_path):
+    csv = tmp_path / "bad.csv"
+    pd.DataFrame({"x": []}).to_csv(csv, index=False)
+    df = teg.append_images(csv, ["c.jpg"])
+    assert list(df.columns) == teg.DEFAULT_COLUMNS
+    saved = pd.read_csv(csv)
+    assert list(saved.columns) == teg.DEFAULT_COLUMNS
+    assert saved.loc[0, "image_path"] == "c.jpg"
