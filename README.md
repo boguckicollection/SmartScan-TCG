@@ -81,4 +81,6 @@ Helper functions for loading and training these networks are available in
 `scanner.card_model` and `scanner.type_model`.
 
 Without these files the scanning GUI will raise **"Card classifier model not
-found"** when it tries to load the models.
+found"** when it tries to load the models. Building a dataset from the training
+editor also relies on these weights, so make sure they are present before using
+the **"Buduj dataset"** option.
