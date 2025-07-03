@@ -66,6 +66,8 @@ def run(
         container.pack(fill="both", expand=True)
 
     tree = ttk.Treeview(container, columns=list(df.columns), show="headings")
+    vsb = ttk.Scrollbar(container, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=vsb.set)
     for col in df.columns:
         tree.heading(col, text=col)
         tree.column(col, width=120)
@@ -83,7 +85,8 @@ def run(
             tree.insert("", "end", iid=str(i), values=list(row))
         page_var.set(f"{current_page + 1} / {total_pages}")
 
-    tree.pack(fill="both", expand=True)
+    tree.pack(side="left", fill="both", expand=True)
+    vsb.pack(side="right", fill="y")
 
     nav = ttk.Frame(container)
     nav.pack(pady=5)

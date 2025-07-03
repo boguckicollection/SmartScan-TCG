@@ -11,7 +11,6 @@ from gui_utils import (
     FOOTER_FONT,
 )
 
-_scale: float = 1.0
 
 _root: ctk.CTk | None = None
 _sidebar: ctk.CTkFrame | None = None
@@ -150,13 +149,16 @@ def show_scan_results(data: list[dict]) -> None:
 
     columns = ["CardID", "Name", "Number", "Set", "Type"]
     tree = ttk.Treeview(frame, columns=columns, show="headings")
+    vsb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=vsb.set)
     for col in columns:
         tree.heading(col, text=col)
         tree.column(col, width=120)
     for row in data:
         values = [row.get(c, "") for c in columns]
         tree.insert("", "end", values=values)
-    tree.pack(fill="both", expand=True, pady=10)
+    tree.pack(side="left", fill="both", expand=True, pady=10)
+    vsb.pack(side="right", fill="y")
 
     def save() -> None:
         save_path = filedialog.asksaveasfilename(
@@ -239,13 +241,12 @@ def start_sales():
 
 
 def main():
-    global _root, _sidebar, _content, _scale
+    global _root, _sidebar, _content
     root = ctk.CTk()
     _root = root
     root.title("SmartScanTCG")
     icon_path = Path(__file__).resolve().parent / "assets" / "logo.png"
     set_window_icon(root, str(icon_path) if icon_path.exists() else None)
-    root.tk.call("tk", "scaling", _scale)
     init_tk_theme(root)
 
     bg_path = Path(__file__).resolve().parent / "assets" / "backgroung.png"
@@ -282,27 +283,6 @@ def main():
 
     _content = ctk.CTkFrame(body, fg_color="#222222")
     _content.pack(side="left", fill="both", expand=True, padx=10, pady=10)
-
-    scale_frame = ctk.CTkFrame(root, fg_color="transparent")
-    scale_frame.pack(side="bottom", pady=(0, 5))
-    ctk.CTkLabel(scale_frame, text="Skalowanie:").pack(side="left", padx=(0, 5))
-    scale_var = tk.StringVar(value=str(_scale))
-
-    def _on_scale(event: tk.Event | None = None) -> None:
-        global _scale
-        try:
-            _scale = float(scale_var.get())
-        except Exception:
-            return
-        root.tk.call("tk", "scaling", _scale)
-
-    cmb = ctk.CTkOptionMenu(
-        scale_frame,
-        variable=scale_var,
-        values=["0.8", "1.0", "1.2", "1.5"],
-        command=lambda v: _on_scale(),
-    )
-    cmb.pack(side="left")
 
     ctk.CTkLabel(root, text="power by boguckicollection", font=FOOTER_FONT).pack(side="bottom", pady=10)
 
