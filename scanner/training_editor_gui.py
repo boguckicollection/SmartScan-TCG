@@ -112,13 +112,17 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         container = ctk.CTkFrame(master, fg_color="#222222")
         container.pack(fill="both", expand=True)
 
-    tree = ttk.Treeview(container, columns=list(df.columns), show="headings")
-    for col in df.columns:
+    display_cols = [c for c in df.columns if c not in {"image_path", "card_id"}]
+    tree = ttk.Treeview(container, columns=display_cols, show="headings")
+    vsb = ttk.Scrollbar(container, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=vsb.set)
+    for col in display_cols:
         tree.heading(col, text=col)
         tree.column(col, width=140)
     for i, row in df.iterrows():
-        tree.insert("", "end", iid=str(i), values=list(row))
-    tree.pack(fill="both", expand=True)
+        tree.insert("", "end", iid=str(i), values=[row[c] for c in display_cols])
+    tree.pack(side="left", fill="both", expand=True)
+    vsb.pack(side="right", fill="y")
 
     def save_df() -> None:
         df.to_csv(path, index=False)
@@ -143,10 +147,10 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         detail.image = photo
 
         vars: dict[str, tk.StringVar] = {}
-        for col in df.columns:
+        for col in display_cols:
             frm = ctk.CTkFrame(detail, fg_color="transparent")
             frm.pack(fill="x", padx=10, pady=2)
-            ctk.CTkLabel(frm, text=col, width=120).pack(side="left")
+            ctk.CTkLabel(frm, text=col, width=120, font=("Arial", 14)).pack(side="left")
             value = str(df.at[idx, col])
             if col == "set" and SET_NAMES:
                 if value in SET_NAMES:
@@ -160,8 +164,9 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
                     textvariable=var,
                     values=values,
                     state="normal",
-                    width=30,
-                ).pack(side="left")
+                    width=40,
+                    font=("Arial", 14),
+                ).pack(side="left", fill="x", expand=True)
             elif col in {"holo", "reverse"}:
                 var = tk.StringVar(value=value)
                 ttk.Combobox(
@@ -169,16 +174,18 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
                     textvariable=var,
                     values=["True", "False"],
                     state="readonly",
-                    width=30,
-                ).pack(side="left")
+                    width=40,
+                    font=("Arial", 14),
+                ).pack(side="left", fill="x", expand=True)
             else:
                 var = tk.StringVar(value=value)
-                ttk.Entry(frm, textvariable=var, width=30).pack(side="left")
+                ttk.Entry(frm, textvariable=var, width=40, font=("Arial", 14)).pack(side="left", fill="x", expand=True)
             vars[col] = var
 
         def close() -> None:
             detail.destroy()
-            tree.pack(fill="both", expand=True)
+            tree.pack(side="left", fill="both", expand=True)
+            vsb.pack(side="right", fill="y")
 
         def save() -> None:
             def norm_int(v: str) -> str:
@@ -206,7 +213,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             if karton and rzad and pos:
                 df.at[idx, "card_id"] = f"K{karton}_R{rzad}_P{pos_int:04d}"
             save_df()
-            tree.item(item, values=list(df.loc[idx]))
+            tree.item(item, values=[df.at[idx, c] for c in display_cols])
             close()
 
         btns = ctk.CTkFrame(detail, fg_color="transparent")
@@ -228,7 +235,12 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             return
         for p in paths:
             df.loc[len(df)] = [p, "", "", "", False, False, "", "", ""]
-            tree.insert("", "end", iid=str(len(df) - 1), values=list(df.loc[len(df) - 1]))
+            tree.insert(
+                "",
+                "end",
+                iid=str(len(df) - 1),
+                values=[df.iloc[-1][c] for c in display_cols],
+            )
         save_df()
 
     def scan_images() -> None:
@@ -251,7 +263,12 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
                 row = {c: "" for c in df.columns}
                 row["image_path"] = p
             df.loc[len(df)] = [row.get(c, "") for c in df.columns]
-            tree.insert("", "end", iid=str(len(df) - 1), values=list(df.loc[len(df) - 1]))
+            tree.insert(
+                "",
+                "end",
+                iid=str(len(df) - 1),
+                values=[df.iloc[-1][c] for c in display_cols],
+            )
         save_df()
 
     btn_frame = ctk.CTkFrame(container, fg_color="transparent")
@@ -312,7 +329,12 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         df.drop(df.index, inplace=True)
         for _, row in new_df.iterrows():
             df.loc[len(df)] = row
-            tree.insert("", "end", iid=str(len(df) - 1), values=list(row))
+            tree.insert(
+                "",
+                "end",
+                iid=str(len(df) - 1),
+                values=[row[c] for c in display_cols],
+            )
 
     def build_dataset_only() -> None:
         scan_dir = filedialog.askdirectory(title="Wybierz folder skanów")
@@ -352,7 +374,12 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         df.drop(df.index, inplace=True)
         for _, row in new_df.iterrows():
             df.loc[len(df)] = row
-            tree.insert("", "end", iid=str(len(df) - 1), values=list(row))
+            tree.insert(
+                "",
+                "end",
+                iid=str(len(df) - 1),
+                values=[row[c] for c in display_cols],
+            )
 
     ctk.CTkButton(btn_frame, text="Buduj dataset", command=build_dataset_only).pack(side="left", padx=5)
     ctk.CTkButton(btn_frame, text="Trenuj modele", command=build_and_train).pack(side="left", padx=5)
