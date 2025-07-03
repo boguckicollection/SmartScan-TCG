@@ -55,6 +55,10 @@ def append_images(csv_path: str | Path, image_paths: list[str]) -> pd.DataFrame:
             df = pd.DataFrame(columns=DEFAULT_COLUMNS)
     else:
         df = pd.DataFrame(columns=DEFAULT_COLUMNS)
+
+    if list(df.columns) != DEFAULT_COLUMNS:
+        df = df.reindex(columns=DEFAULT_COLUMNS, fill_value="")
+
     for p in image_paths:
         df.loc[len(df)] = [p, "", "", "", False, False, "", "", ""]
     df.to_csv(path, index=False)
@@ -206,6 +210,12 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         paths = filedialog.askopenfilenames(title="Wybierz obrazy", filetypes=[("Image files", "*.jpg *.png")])
         if not paths:
             return
+        if list(df.columns) != DEFAULT_COLUMNS:
+            messagebox.showerror(
+                "Błędne kolumny",
+                "CSV ma niezgodne kolumny i nie można dodać wierszy.",
+            )
+            return
         for p in paths:
             df.loc[len(df)] = [p, "", "", "", False, False, "", "", ""]
             tree.insert("", "end", iid=str(len(df) - 1), values=list(df.loc[len(df) - 1]))
@@ -217,6 +227,12 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             filetypes=[("Image files", "*.jpg *.png")],
         )
         if not paths:
+            return
+        if list(df.columns) != DEFAULT_COLUMNS:
+            messagebox.showerror(
+                "Błędne kolumny",
+                "CSV ma niezgodne kolumny i nie można dodać wierszy.",
+            )
             return
         for p in paths:
             try:
