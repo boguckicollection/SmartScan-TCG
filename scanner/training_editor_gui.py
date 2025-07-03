@@ -109,7 +109,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         win.title("Training Data Editor")
         init_tk_theme(win)
     else:
-        container = ctk.CTkFrame(master, fg_color="#222222")
+        container = ctk.CTkFrame(master, fg_color="transparent")
         container.pack(fill="both", expand=True)
 
     display_cols = [c for c in df.columns if c not in {"image_path", "card_id"}]
@@ -133,7 +133,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             return
         idx = int(item)
         tree.pack_forget()
-        detail = ctk.CTkFrame(container, fg_color="#222222")
+        detail = ctk.CTkFrame(container, fg_color="transparent")
         detail.pack(fill="both", expand=True)
 
         img_file = Path(df.at[idx, "image_path"])

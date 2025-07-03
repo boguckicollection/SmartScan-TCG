@@ -85,7 +85,7 @@ def show_scan_progress(paths: list[Path]) -> None:
     if _content is None:
         return
 
-    frame = ctk.CTkFrame(_content, fg_color="#222222")
+    frame = ctk.CTkFrame(_content, fg_color="transparent")
     frame.pack(pady=20)
 
     ctk.CTkLabel(frame, text="Skanowanie kart... 🃏").pack(padx=20, pady=(0, 5))
@@ -144,7 +144,7 @@ def show_scan_results(data: list[dict]) -> None:
         return
 
     clear_content()
-    frame = ctk.CTkFrame(_content, fg_color="#222222")
+    frame = ctk.CTkFrame(_content, fg_color="transparent")
     frame.pack(fill="both", expand=True)
 
     columns = ["CardID", "Name", "Number", "Set", "Type"]
@@ -192,7 +192,7 @@ def start_viewer() -> None:
     clear_content()
     if _content is None:
         return
-    frame = ctk.CTkFrame(_content, fg_color="#222222")
+    frame = ctk.CTkFrame(_content, fg_color="transparent")
     frame.pack(fill="both", expand=True)
     viewer_gui.run(str(csv_path), master=frame, page_size=50)
     ctk.CTkButton(frame, text="Powrót", command=start_dashboard).pack(pady=10)
@@ -207,7 +207,7 @@ def start_training_editor() -> None:
     if _content is None:
         return
     import scanner.training_editor_gui as teg
-    frame = ctk.CTkFrame(_content, fg_color="#222222")
+    frame = ctk.CTkFrame(_content, fg_color="transparent")
     frame.pack(fill="both", expand=True)
     teg.run(str(csv_path), master=frame)
     ctk.CTkButton(frame, text="Powrót", command=start_dashboard).pack(pady=10)
@@ -259,13 +259,13 @@ def main():
         bg_label.lower()
         root.bg_photo = bg_photo
 
-    body = ctk.CTkFrame(root, fg_color="#222222")
+    body = ctk.CTkFrame(root, fg_color="transparent")
     body.pack(fill="both", expand=True)
 
-    sidebar_bar = ctk.CTkFrame(body, fg_color="#555555", width=6)
+    sidebar_bar = ctk.CTkFrame(body, fg_color="transparent", width=6)
     sidebar_bar.pack(side="left", fill="y")
 
-    _sidebar = ctk.CTkFrame(body, fg_color="#333333", width=150)
+    _sidebar = ctk.CTkFrame(body, fg_color="transparent", width=150)
     _sidebar.pack(side="left", fill="y", padx=(0, 20), pady=10)
 
     logo_path = Path(__file__).resolve().parent / "assets" / "logo.png"
@@ -281,7 +281,7 @@ def main():
     else:
         ctk.CTkLabel(_sidebar, text="SmartScanTCG", font=TITLE_FONT).pack(pady=(10, 20))
 
-    _content = ctk.CTkFrame(body, fg_color="#222222")
+    _content = ctk.CTkFrame(body, fg_color="transparent")
     _content.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
     ctk.CTkLabel(root, text="power by boguckicollection", font=FOOTER_FONT).pack(side="bottom", pady=10)
