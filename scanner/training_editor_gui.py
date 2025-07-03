@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import tkinter as tk
-from tkinter import filedialog, ttk
+from tkinter import filedialog, ttk, messagebox
 import customtkinter as ctk
 from PIL import Image, ImageTk
 import pandas as pd
@@ -242,6 +242,19 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         scan_dir = filedialog.askdirectory(title="Wybierz folder skanów")
         if not scan_dir:
             return
+        model_dir = Path(__file__).resolve().parent
+        missing = [
+            p.name
+            for p in (model_dir / "card_model.pt", model_dir / "type_model.pt")
+            if not p.exists()
+        ]
+        if missing:
+            messagebox.showerror(
+                "Brak modeli",
+                "Brak plików: " + ", ".join(missing) + 
+                "\nUmieść je w folderze 'scanner' lub wytrenuj modele."
+            )
+            return
         progress_var.set(0)
         progress.pack(fill="x", padx=10, pady=5)
         status_label.pack(pady=2)
@@ -279,6 +292,21 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         scan_dir = filedialog.askdirectory(title="Wybierz folder skanów")
         if not scan_dir:
             return
+        model_dir = Path(__file__).resolve().parent
+        missing = [
+            p.name
+            for p in (model_dir / "card_model.pt", model_dir / "type_model.pt")
+            if not p.exists()
+        ]
+        if missing:
+            messagebox.showerror(
+                "Brak modeli",
+                "Brak plików: " + ", ".join(missing) +
+                "\nUmieść je w folderze 'scanner' lub wytrenuj modele."
+            )
+            return
+
+        main
         progress.configure(maximum=1)
         progress_var.set(0)
         progress.pack(fill="x", padx=10, pady=5)
