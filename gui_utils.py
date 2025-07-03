@@ -19,11 +19,9 @@ def init_tk_theme(win: tk.Misc) -> None:
     if isinstance(win, ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("dark-blue")
-        style = ttk.Style()
-    else:
-        sv_ttk.set_theme("dark")
-        style = ttk.Style(win)
-    style.configure("TLabel", font=("Arial", 10))
+    sv_ttk.set_theme("dark")
+    style = ttk.Style(win)
+    style.configure("TLabel", font=("Arial", 10), foreground="white")
 
 
 
