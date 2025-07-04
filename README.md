@@ -93,3 +93,17 @@ Without these files the scanning GUI will raise **"Card classifier model not
 found"** when it tries to load the models. Building a dataset from the training
 editor also relies on these weights, so make sure they are present before using
 the **"Buduj dataset"** option.
+
+## Generating a type dataset
+
+`generate_type_dataset.py` copies each image from `scanner/dataset.csv` into two directory trees used for training models:
+
+- `data/type_dataset/<type>` holds `holo`, `reverse` and `common` scans
+- `data/card_dataset/<card_id>` contains one folder per card ID
+
+The script creates these folders if they do not exist. Run it from the repository root like so:
+
+```bash
+python generate_type_dataset.py --csv scanner/dataset.csv --type-dir data/type_dataset --card-dir data/card_dataset
+```
+
