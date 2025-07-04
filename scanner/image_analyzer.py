@@ -1,101 +1,99 @@
-"""Image processing helpers for detecting card characteristics."""
+# image_analyzer.py
 
-from __future__ import annotations
-
-from pathlib import Path
-import csv
-
+import torch
+from torchvision import transforms, models
+from torch import nn, optim
 from PIL import Image
+import pandas as pd
+from pathlib import Path
+from tqdm import tqdm
 
-try:  # ``torch`` is optional when running tests
-    import torch
-    from torch import nn
-    from torchvision import transforms
-except Exception:  # pragma: no cover - ``torch`` may be missing
-    torch = None
-    nn = None
-    transforms = None
+def train_type_classifier(csv_path: str | Path, model_path: str | Path, epochs: int = 5) -> None:
+    """Trenuje klasyfikator typu karty (normal / reverse / holo) na podstawie dataset.csv"""
+    df = pd.read_csv(csv_path)
+    classes = []
+    images = []
 
-from .classifier import CardClassifier
+    def get_type(row):
+        if row.get("holo", False): return "holo"
+        if row.get("reverse", False): return "reverse"
+        return "normal"
 
+    for _, row in df.iterrows():
+        path = Path(row["image_path"])
+        if not path.exists():
+            continue
+        label = get_type(row)
+        try:
+            img = Image.open(path).convert("RGB")
+        except Exception:
+            continue
+        images.append(img)
+        classes.append(label)
 
-DATASET_PATH = Path(__file__).resolve().parent / "dataset.csv"
-MODEL_PATH = Path(__file__).resolve().parent / "type_model.pt"
+    class_names = sorted(set(classes))
+    class_to_idx = {cls: i for i, cls in enumerate(class_names)}
 
-_type_clf: CardClassifier | None = None
+    X = []
+    y = []
+    transform = transforms.Compose([
+        transforms.Resize((64, 64)),
+        transforms.ToTensor(),
+    ])
 
+    for img, label in zip(images, classes):
+        X.append(transform(img))
+        y.append(class_to_idx[label])
 
-def analyze_image(path: str) -> dict:
-    """Return extracted features from card image."""
-    Image.open(path)  # ensure the path exists
-    try:
-        card_type = predict_type(path)
-        return {
-            "holo": card_type == "holo",
-            "reverse": card_type == "reverse",
-            "rarity": "common" if card_type == "common" else "holo",
-        }
-    except Exception:  # pragma: no cover - prediction may fail in tests
-        return {"holo": False, "reverse": False, "rarity": "common"}
+    X_tensor = torch.stack(X)
+    y_tensor = torch.tensor(y)
 
+    model = models.resnet18(weights=None)
+    model.fc = nn.Linear(model.fc.in_features, len(class_names))
 
-def _load_dataset(csv_path: str | Path) -> tuple[list[torch.Tensor], list[str]]:
-    """Return tensors and labels from ``csv_path``."""
-    if not torch:
-        raise ImportError("PyTorch is required for training")
-    images: list[torch.Tensor] = []
-    labels: list[str] = []
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    transform = transforms.Compose([transforms.Resize((64, 64)), transforms.ToTensor()])
-    with open(csv_path, newline="", encoding="utf-8") as fh:
-        reader = csv.DictReader(fh)
-        for row in reader:
-            img = Image.open(row["image_path"]).convert("RGB")
-            images.append(transform(img))
-            label = "common"
-            if str(row.get("holo", "")).lower() in {"1", "true", "t"}:
-                label = "holo"
-            elif str(row.get("reverse", "")).lower() in {"1", "true", "t"}:
-                label = "reverse"
-            labels.append(label)
-    return images, labels
+    for epoch in range(epochs):
+        model.train()
+        optimizer.zero_grad()
+        outputs = model(X_tensor)
+        loss = criterion(outputs, y_tensor)
+        loss.backward()
+        optimizer.step()
+        print(f"[Epoch {epoch+1}] Loss: {loss.item():.4f}")
 
+    torch.save({
+        "model_state_dict": model.state_dict(),
+        "class_to_idx": class_to_idx
+    }, model_path)
+    print(f"✅ Zapisano model typu: {model_path}")
 
-def train_type_classifier(
-    csv_path: str | Path = DATASET_PATH,
-    model_path: str | Path = MODEL_PATH,
-    epochs: int = 1,
-) -> CardClassifier:
-    """Train type classifier from labeled ``csv_path`` and save to ``model_path``."""
-    if not torch:
-        raise ImportError("PyTorch is required for training")
+def predict_type(image_path: str | Path, model_path: str | Path) -> str:
+    """
+    Przewiduje typ karty ('normal', 'reverse', 'holo') na podstawie obrazu.
+    """
+    image_path = Path(image_path)
+    checkpoint = torch.load(model_path, map_location="cpu")
 
-    images, labels = _load_dataset(csv_path)
-    clf = CardClassifier(num_classes=3, model_name="mobilenet", device="cpu")
-    clf.fit(images, labels, epochs=max(1, epochs))
-    clf.save(model_path)
-    global _type_clf
-    _type_clf = clf
-    return clf
+    model = models.resnet18(weights=None)
+    model.fc = torch.nn.Linear(model.fc.in_features, len(checkpoint["class_to_idx"]))
+    model.load_state_dict(checkpoint["model_state_dict"])
+    model.eval()
 
+    idx_to_class = {v: k for k, v in checkpoint["class_to_idx"].items()}
 
-def _ensure_loaded(model_path: str | Path = MODEL_PATH) -> CardClassifier:
-    """Load the classifier if not already loaded."""
-    global _type_clf
-    if _type_clf is None:
-        if not Path(model_path).exists():
-            raise RuntimeError("Type classifier model not found")
-        _type_clf = CardClassifier.load(model_path, device="cpu")
-    return _type_clf
+    transform = transforms.Compose([
+        transforms.Resize((64, 64)),
+        transforms.ToTensor(),
+    ])
 
+    image = Image.open(image_path).convert("RGB")
+    tensor = transform(image).unsqueeze(0)
 
-def predict_type(image_path: str, model_path: str | Path = MODEL_PATH) -> str:
-    """Return predicted card type: ``holo``, ``reverse``, or ``common``."""
-    if not torch:
-        raise ImportError("PyTorch is required for prediction")
-    clf = _ensure_loaded(model_path)
-    transform = transforms.Compose([transforms.Resize((64, 64)), transforms.ToTensor()])
-    img = Image.open(image_path).convert("RGB")
-    tensor = transform(img)
-    return clf.predict([tensor])[0]
+    with torch.no_grad():
+        output = model(tensor)
+        predicted = torch.argmax(output, dim=1).item()
+        predicted_class = idx_to_class[predicted]
 
+    return predicted_class
