@@ -28,7 +28,13 @@ def main() -> None:
     type_output_base = Path(args.type_dir)
     card_output_base = Path(args.card_dir)
 
-    df = pd.read_csv(csv_path)
+    try:
+        df = pd.read_csv(csv_path)
+    except pd.errors.EmptyDataError as exc:
+        raise SystemExit(
+            "Dataset CSV is empty. Run 'scanner.dataset_builder.build_dataset' "
+            "on your labeled card scans to populate it."
+        ) from exc
 
     def determine_type(row):
         holo = str(row.get("holo", "")).strip().lower() == "true"

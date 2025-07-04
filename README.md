@@ -79,6 +79,9 @@ train the models yourself:
 3. Train `scanner.classifier.CardClassifier` with your own labeled images to
    generate `card_model.pt`.
 
+The repository's `scanner/dataset.csv` is intentionally empty. Run the dataset
+builder first to fill it before using scripts like `generate_type_dataset.py`.
+
 Using a CSV with different columns will cause errors in the training editor.
 To append images while maintaining this layout, call
 `training_editor_gui.append_images`.
