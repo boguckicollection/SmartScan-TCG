@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from scanner.classifier import CardClassifier
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
 from pathlib import Path
+import torch
 import csv
 from PIL import Image
 
@@ -43,22 +47,25 @@ def _load_dataset(csv_path: str | Path) -> tuple[list[torch.Tensor], list[str]]:
     return images, labels
 
 
-def train_type_classifier(
-    csv_path: str | Path = DATASET_PATH,
-    model_path: str | Path = MODEL_PATH,
-    epochs: int = 1,
-) -> CardClassifier:
-    """Train the type classifier from labeled data and save to ``model_path``."""
-    if not torch:
-        raise ImportError("PyTorch is required for training")
+def train_type_classifier(dataset_dir: Path, output_model_path: Path):
+    """Train a model to classify card types (e.g. common, holo, reverse)."""
+    transform = transforms.Compose([
+        transforms.Resize((64, 64)),
+        transforms.ToTensor(),
+    ])
+    dataset = datasets.ImageFolder(dataset_dir, transform=transform)
+    loader = DataLoader(dataset, batch_size=32, shuffle=True)
 
-    images, labels = _load_dataset(csv_path)
-    clf = CardClassifier(num_classes=3, model_name="mobilenet", device="cpu")
-    clf.fit(images, labels, epochs=max(1, epochs))
-    clf.save(model_path)
-    global _model
-    _model = clf
-    return clf
+    X, y = [], []
+    for img, label in loader:
+        for i in range(img.size(0)):
+            X.append(img[i])
+            y.append(dataset.classes[label[i]])
+
+    clf = CardClassifier(model_name="resnet18", num_classes=len(set(y)))
+    clf.fit(X, y, epochs=5)
+    clf.save(output_model_path)
+    print(f"[OK] Model zapisany do {output_model_path}")
 
 
 def _ensure_loaded(model_path: str | Path = MODEL_PATH) -> CardClassifier:
@@ -80,3 +87,8 @@ def predict_type(image_path: str, model_path: str | Path = MODEL_PATH) -> str:
     img = Image.open(image_path).convert("RGB")
     tensor = transform(img)
     return clf.predict([tensor])[0]
+
+if __name__ == "__main__":
+    dataset_path = Path("data/type_dataset")
+    output_path = Path(__file__).resolve().parent / "type_model.pt"
+    train_type_classifier(dataset_path, output_path)
