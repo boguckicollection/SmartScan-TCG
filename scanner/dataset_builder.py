@@ -1,54 +1,73 @@
-# dataset_builder.py
+from __future__ import annotations
 
-import pandas as pd
+"""Utilities for building a labeled image dataset from card scans."""
+
 from pathlib import Path
+import csv
+from typing import List, Dict
 
-def build_dataset(scan_dir: str | Path, csv_path: str | Path) -> None:
-    """
-    Uzupełnia plik CSV na podstawie zawartości folderu scan_dir,
-    dodając brakujące wpisy do dataset.csv i automatycznie przypisując:
-    - karton
-    - rzad
-    - pozycja
-    - card_id
-    """
-    scan_dir = Path(scan_dir)
-    csv_path = Path(csv_path)
+from .card_scanner import scan_image
+from .image_analyzer import analyze_image
 
-    if not scan_dir.exists():
-        raise FileNotFoundError(f"Nie znaleziono folderu: {scan_dir}")
 
-    if csv_path.exists():
-        df = pd.read_csv(csv_path)
-    else:
-        df = pd.DataFrame(columns=[
-            "image_path", "name", "card_id", "set", "holo",
-            "reverse", "karton", "rzad", "pozycja"
-        ])
+def gather_scan_paths(scan_dir: str | Path) -> List[Path]:
+    """Return sorted list of image paths within ``scan_dir``."""
+    directory = Path(scan_dir)
+    files: List[Path] = []
+    for pattern in ("*.jpg", "*.png"):
+        files.extend(sorted(directory.glob(pattern)))
+    return files
 
-    existing_paths = set(df["image_path"].astype(str))
-    new_rows = []
-    start_index = len(df)
 
-    new_images = [p for p in scan_dir.glob("*.jpg") if str(p.resolve()) not in existing_paths]
+def label_image(path: Path) -> Dict[str, object]:
+    """Return dataset row for ``path`` combining scan and analysis."""
+    card_data = scan_image(path)
+    image_data = analyze_image(str(path))
 
-    for i, img_path in enumerate(new_images):
-        global_pos = start_index + i + 1
-        karton = (global_pos - 1) // 4000 + 1
-        rzad = ((global_pos - 1) % 4000) // 1000 + 1
-        pozycja = ((global_pos - 1) % 1000) + 1
+    set_name = card_data.get("Set", "Unknown")
+    number = card_data.get("Number", "")
+    name = card_data.get("Name", "Unknown")
+    card_id = f"{set_name}-{number}" if set_name and number else ""
 
-        card_id = f"K{karton}_R{rzad}_P{pozycja:04d}"
+    return {
+        "image_path": str(path),
+        "name": name,
+        "card_id": card_id,
+        "set": set_name,
+        "holo": bool(image_data.get("holo")),
+        "reverse": bool(image_data.get("reverse")),
+        "karton": "",
+        "rzad": "",
+        "pozycja": "",
+    }
 
-        new_rows.append({
-            "image_path": str(img_path.resolve()),
-            "name": "", "card_id": card_id, "set": "",
-            "holo": False, "reverse": False,
-            "karton": karton, "rzad": rzad, "pozycja": pozycja
-        })
 
-    if new_rows:
-        df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
-        df.to_csv(csv_path, index=False)
+def build_dataset(scan_dir: str | Path, csv_path: str | Path | None = None) -> List[Dict[str, object]]:
+    """Gather scans from ``scan_dir`` and save labeled data to CSV."""
+    paths = gather_scan_paths(scan_dir)
+    rows = [label_image(p) for p in paths]
 
-    print(f"✅ Dataset zbudowany. Liczba kart: {len(df)}")
+    if csv_path is None:
+        csv_path = Path(__file__).resolve().parent / "dataset.csv"
+    out = Path(csv_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    with out.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(
+            fh,
+            fieldnames=[
+                "image_path",
+                "name",
+                "card_id",
+                "set",
+                "holo",
+                "reverse",
+                "karton",
+                "rzad",
+                "pozycja",
+            ],
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+
+    return rows
