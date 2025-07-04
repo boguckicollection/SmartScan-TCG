@@ -8,7 +8,7 @@ from tkinter import filedialog, ttk, messagebox
 import customtkinter as ctk
 from PIL import Image, ImageTk
 import pandas as pd
-from .set_mapping import SET_MAP, SET_NAMES, INV_SET_MAP
+from .set_mapping import SET_MAP
 
 
 class FilterableCombobox(ttk.Combobox):
@@ -24,7 +24,8 @@ class FilterableCombobox(ttk.Combobox):
         filtered = [v for v in self._all_values if pattern in v.lower()]
         self["values"] = filtered if filtered else self._all_values
 
-# Reverse lookup mapping imported from set_mapping
+# Reverse lookup of set names to their abbreviations
+INV_SET_MAP: dict[str, str] = {v: k for k, v in SET_MAP.items()}
 from gui_utils import init_tk_theme
 
 from . import dataset_builder, image_analyzer
@@ -109,20 +110,16 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         win.title("Training Data Editor")
         init_tk_theme(win)
     else:
-        container = ctk.CTkFrame(master, fg_color="transparent")
+        container = ctk.CTkFrame(master, fg_color="#222222")
         container.pack(fill="both", expand=True)
 
-    display_cols = [c for c in df.columns if c not in {"image_path", "card_id"}]
-    tree = ttk.Treeview(container, columns=display_cols, show="headings")
-    vsb = ttk.Scrollbar(container, orient="vertical", command=tree.yview)
-    tree.configure(yscrollcommand=vsb.set)
-    for col in display_cols:
+    tree = ttk.Treeview(container, columns=list(df.columns), show="headings")
+    for col in df.columns:
         tree.heading(col, text=col)
         tree.column(col, width=140)
     for i, row in df.iterrows():
-        tree.insert("", "end", iid=str(i), values=[row[c] for c in display_cols])
-    tree.pack(side="left", fill="both", expand=True)
-    vsb.pack(side="right", fill="y")
+        tree.insert("", "end", iid=str(i), values=list(row))
+    tree.pack(fill="both", expand=True)
 
     def save_df() -> None:
         df.to_csv(path, index=False)
@@ -133,7 +130,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             return
         idx = int(item)
         tree.pack_forget()
-        detail = ctk.CTkFrame(container, fg_color="transparent")
+        detail = ctk.CTkFrame(container, fg_color="#222222")
         detail.pack(fill="both", expand=True)
 
         img_file = Path(df.at[idx, "image_path"])
@@ -147,26 +144,22 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         detail.image = photo
 
         vars: dict[str, tk.StringVar] = {}
-        for col in display_cols:
+        for col in df.columns:
             frm = ctk.CTkFrame(detail, fg_color="transparent")
             frm.pack(fill="x", padx=10, pady=2)
-            ctk.CTkLabel(frm, text=col, width=120, font=("Arial", 14)).pack(side="left")
+            ctk.CTkLabel(frm, text=col, width=120).pack(side="left")
             value = str(df.at[idx, col])
-            if col == "set" and SET_NAMES:
-                if value in SET_NAMES:
-                    display = SET_NAMES[value][0]
-                else:
-                    display = value
+            if col == "set" and SET_MAP:
+                display = SET_MAP.get(value.upper(), value)
                 var = tk.StringVar(value=display)
-                values = sorted(INV_SET_MAP.keys())
+                values = sorted(SET_MAP.values())
                 FilterableCombobox(
                     frm,
                     textvariable=var,
                     values=values,
                     state="normal",
-                    width=40,
-                    font=("Arial", 14),
-                ).pack(side="left", fill="x", expand=True)
+                    width=30,
+                ).pack(side="left")
             elif col in {"holo", "reverse"}:
                 var = tk.StringVar(value=value)
                 ttk.Combobox(
@@ -174,32 +167,22 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
                     textvariable=var,
                     values=["True", "False"],
                     state="readonly",
-                    width=40,
-                    font=("Arial", 14),
-                ).pack(side="left", fill="x", expand=True)
+                    width=30,
+                ).pack(side="left")
             else:
                 var = tk.StringVar(value=value)
-                ttk.Entry(frm, textvariable=var, width=40, font=("Arial", 14)).pack(side="left", fill="x", expand=True)
+                ttk.Entry(frm, textvariable=var, width=30).pack(side="left")
             vars[col] = var
 
         def close() -> None:
             detail.destroy()
-            tree.pack(side="left", fill="both", expand=True)
-            vsb.pack(side="right", fill="y")
+            tree.pack(fill="both", expand=True)
 
         def save() -> None:
-            def norm_int(v: str) -> str:
-                try:
-                    return str(int(float(v)))
-                except Exception:
-                    return v
-
             for col, var in vars.items():
                 val = var.get()
-                if col == "set" and SET_NAMES:
+                if col == "set" and SET_MAP:
                     val = INV_SET_MAP.get(val, val)
-                elif col in {"karton", "rzad", "pozycja"}:
-                    val = norm_int(val)
                 df.at[idx, col] = val
             # generate new card_id from karton/rzad/pozycja
             karton = df.at[idx, "karton"]
@@ -207,13 +190,13 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             pos = df.at[idx, "pozycja"]
             try:
                 pos_int = max(0, min(int(pos), 1000))
-            except Exception:
+            except ValueError:
                 pos_int = 0
             df.at[idx, "pozycja"] = str(pos_int)
             if karton and rzad and pos:
                 df.at[idx, "card_id"] = f"K{karton}_R{rzad}_P{pos_int:04d}"
             save_df()
-            tree.item(item, values=[df.at[idx, c] for c in display_cols])
+            tree.item(item, values=list(df.loc[idx]))
             close()
 
         btns = ctk.CTkFrame(detail, fg_color="transparent")
@@ -235,12 +218,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
             return
         for p in paths:
             df.loc[len(df)] = [p, "", "", "", False, False, "", "", ""]
-            tree.insert(
-                "",
-                "end",
-                iid=str(len(df) - 1),
-                values=[df.iloc[-1][c] for c in display_cols],
-            )
+            tree.insert("", "end", iid=str(len(df) - 1), values=list(df.loc[len(df) - 1]))
         save_df()
 
     def scan_images() -> None:
@@ -263,12 +241,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
                 row = {c: "" for c in df.columns}
                 row["image_path"] = p
             df.loc[len(df)] = [row.get(c, "") for c in df.columns]
-            tree.insert(
-                "",
-                "end",
-                iid=str(len(df) - 1),
-                values=[df.iloc[-1][c] for c in display_cols],
-            )
+            tree.insert("", "end", iid=str(len(df) - 1), values=list(df.loc[len(df) - 1]))
         save_df()
 
     btn_frame = ctk.CTkFrame(container, fg_color="transparent")
@@ -329,12 +302,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         df.drop(df.index, inplace=True)
         for _, row in new_df.iterrows():
             df.loc[len(df)] = row
-            tree.insert(
-                "",
-                "end",
-                iid=str(len(df) - 1),
-                values=[row[c] for c in display_cols],
-            )
+            tree.insert("", "end", iid=str(len(df) - 1), values=list(row))
 
     def build_dataset_only() -> None:
         scan_dir = filedialog.askdirectory(title="Wybierz folder skanów")
@@ -374,12 +342,7 @@ def run(csv_path: str | Path = DEFAULT_PATH, master: tk.Misc | None = None) -> t
         df.drop(df.index, inplace=True)
         for _, row in new_df.iterrows():
             df.loc[len(df)] = row
-            tree.insert(
-                "",
-                "end",
-                iid=str(len(df) - 1),
-                values=[row[c] for c in display_cols],
-            )
+            tree.insert("", "end", iid=str(len(df) - 1), values=list(row))
 
     ctk.CTkButton(btn_frame, text="Buduj dataset", command=build_dataset_only).pack(side="left", padx=5)
     ctk.CTkButton(btn_frame, text="Trenuj modele", command=build_and_train).pack(side="left", padx=5)
