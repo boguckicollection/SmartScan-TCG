@@ -50,9 +50,7 @@ def build_sidebar() -> None:
         _nav_buttons[name] = btn
 
     add_btn("📊 Dashboard", start_dashboard)
-    add_btn("📷 Skanowanie kart", start_scan)
     add_btn("📚 Przeglądanie kolekcji", start_viewer)
-    add_btn("📝 Edycja treningu", start_training_editor)
     add_btn("🔗 Scal CSV", merge_csv_dialog)
     add_btn("💰 Analiza sprzedaży", start_sales)
 
