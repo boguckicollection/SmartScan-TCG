@@ -51,6 +51,7 @@ def build_sidebar() -> None:
 
     add_btn("📊 Dashboard", start_dashboard)
     add_btn("📚 Przeglądanie kolekcji", start_viewer)
+    add_btn("➕ Dodaj kartę", start_add_card)
     add_btn("🔗 Scal CSV", merge_csv_dialog)
     add_btn("💰 Analiza sprzedaży", start_sales)
 
@@ -194,6 +195,12 @@ def start_viewer() -> None:
     frame.pack(fill="both", expand=True)
     viewer_gui.run(str(csv_path), master=frame, page_size=50)
     ctk.CTkButton(frame, text="Powrót", command=start_dashboard).pack(pady=10)
+
+
+def start_add_card() -> None:
+    """Open the add card dialog window."""
+    import viewer.add_card_gui as add_gui
+    add_gui.run(_root, csv_path=Path("data/main.csv"))
 
 
 def start_training_editor() -> None:
